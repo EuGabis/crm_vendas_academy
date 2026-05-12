@@ -8,7 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
-import { getSupabase, isSupabaseConfigured } from './supabase';
+import { getSupabase, isSupabaseConfigured, restGet } from './supabase';
 
 export type UserRole = 'admin' | 'manager' | 'seller' | 'viewer' | 'anon';
 
@@ -38,18 +38,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const loadProfile = useCallback(async (userId: string) => {
-    const sb = getSupabase();
-    if (!sb) return null;
-    const { data, error } = await sb
-      .from('profiles')
-      .select('id, role, seller_id')
-      .eq('id', userId)
-      .maybeSingle();
-    if (error) {
-      console.error('Falha ao carregar profile:', error.message);
+    try {
+      // Usa REST direto pra evitar travamento de 15s do supabase-js
+      const rows = await restGet<Profile[]>(
+        `profiles?select=id,role,seller_id&id=eq.${userId}&limit=1`,
+      );
+      return rows[0] ?? null;
+    } catch (err) {
+      console.error('Falha ao carregar profile:', (err as Error).message);
       return null;
     }
-    return (data as Profile | null) ?? null;
   }, []);
 
   useEffect(() => {
@@ -60,37 +58,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const sb = getSupabase()!;
     let cancelled = false;
 
-    // Timeout de segurança: se o getSession travar (CORS, rede fora, etc),
-    // libera o loading depois de 15s pra mostrar a tela de login.
-    const safetyTimeout = setTimeout(() => {
-      if (!cancelled) {
-        console.warn('[Auth] getSession() timeout — liberando tela de login');
-        setLoading(false);
+    // Tenta ler a sessão DIRETO do localStorage primeiro (evita travamento
+    // de getSession do supabase-js).
+    function readSessionFromStorage(): Session | null {
+      try {
+        const url = import.meta.env.VITE_SUPABASE_URL;
+        const ref = new URL(url).hostname.split('.')[0];
+        const raw = localStorage.getItem(`sb-${ref}-auth-token`);
+        if (!raw) return null;
+        return JSON.parse(raw) as Session;
+      } catch {
+        return null;
       }
-    }, 15000);
+    }
 
-    sb.auth
-      .getSession()
-      .then(async ({ data, error }) => {
-        if (cancelled) return;
-        if (error) {
-          console.error('[Auth] getSession error:', error);
+    (async () => {
+      const stored = readSessionFromStorage();
+      if (stored?.user && !cancelled) {
+        setSession(stored);
+        const p = await loadProfile(stored.user.id);
+        if (!cancelled) {
+          setProfile(p);
+          setLoading(false);
         }
+        return;
+      }
+
+      // Sem sessão no storage: chama getSession (com timeout de 5s)
+      const safetyTimeout = setTimeout(() => {
+        if (!cancelled) {
+          console.warn('[Auth] getSession() timeout — liberando tela de login');
+          setLoading(false);
+        }
+      }, 5000);
+
+      try {
+        const { data } = await sb.auth.getSession();
+        if (cancelled) return;
         setSession(data.session);
         if (data.session?.user) {
           const p = await loadProfile(data.session.user.id);
           if (!cancelled) setProfile(p);
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error('[Auth] getSession threw:', err);
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) {
           clearTimeout(safetyTimeout);
           setLoading(false);
         }
-      });
+      }
+    })();
 
     const {
       data: { subscription },
@@ -106,7 +124,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
-      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
   }, [loadProfile]);
