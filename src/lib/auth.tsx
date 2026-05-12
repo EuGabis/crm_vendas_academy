@@ -60,15 +60,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const sb = getSupabase()!;
     let cancelled = false;
 
-    sb.auth.getSession().then(async ({ data }) => {
-      if (cancelled) return;
-      setSession(data.session);
-      if (data.session?.user) {
-        const p = await loadProfile(data.session.user.id);
-        if (!cancelled) setProfile(p);
+    // Timeout de segurança: se o getSession travar (CORS, rede fora, etc),
+    // libera o loading depois de 6s pra mostrar a tela de login.
+    const safetyTimeout = setTimeout(() => {
+      if (!cancelled) {
+        console.warn('[Auth] getSession() timeout — liberando tela de login');
+        setLoading(false);
       }
-      if (!cancelled) setLoading(false);
-    });
+    }, 6000);
+
+    sb.auth
+      .getSession()
+      .then(async ({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          console.error('[Auth] getSession error:', error);
+        }
+        setSession(data.session);
+        if (data.session?.user) {
+          const p = await loadProfile(data.session.user.id);
+          if (!cancelled) setProfile(p);
+        }
+      })
+      .catch((err) => {
+        console.error('[Auth] getSession threw:', err);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          clearTimeout(safetyTimeout);
+          setLoading(false);
+        }
+      });
 
     const {
       data: { subscription },
@@ -84,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       cancelled = true;
+      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
   }, [loadProfile]);
