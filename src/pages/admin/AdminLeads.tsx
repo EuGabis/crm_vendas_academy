@@ -152,9 +152,12 @@ export function AdminLeads() {
 
         {sellers.length === 0 && (
           <Card className="!bg-amber-500/5 border-amber-500/20">
-            <p className="text-sm text-amber-300">
+            <p className="text-sm font-medium text-amber-200 mb-3">
               Cadastre vendedores antes de registrar leads.
             </p>
+            <Button asChild variant="outline" size="sm">
+              <a href="/admin/vendedores">Ir para Vendedores</a>
+            </Button>
           </Card>
         )}
 

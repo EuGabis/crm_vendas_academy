@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import { Plus, Pencil, Trash2, Receipt, Loader2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Receipt, Loader2, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/card';
@@ -133,7 +134,9 @@ export function AdminVendas() {
     }
   }
 
-  const canRegister = sellers.length > 0 && courses.length > 0;
+  const hasSellers = sellers.length > 0;
+  const hasCourses = courses.length > 0;
+  const canRegister = hasSellers && hasCourses;
 
   return (
     <>
@@ -148,8 +151,29 @@ export function AdminVendas() {
 
         {!canRegister && (
           <Card className="!bg-amber-500/5 border-amber-500/20">
-            <p className="text-sm text-amber-300">
-              Antes de registrar vendas, cadastre pelo menos 1 vendedor e 1 curso.
+            <p className="text-sm font-medium text-amber-200 mb-3">
+              Antes de registrar vendas, complete o cadastro de:
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              {!hasSellers && (
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/admin/vendedores">
+                    <ArrowRight className="h-3.5 w-3.5" />
+                    Cadastrar vendedores
+                  </Link>
+                </Button>
+              )}
+              {!hasCourses && (
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/admin/cursos">
+                    <ArrowRight className="h-3.5 w-3.5" />
+                    Cadastrar cursos
+                  </Link>
+                </Button>
+              )}
+            </div>
+            <p className="text-[11px] text-amber-300/60 mt-3">
+              {hasSellers ? '✓' : '○'} Vendedores · {hasCourses ? '✓' : '○'} Cursos
             </p>
           </Card>
         )}
