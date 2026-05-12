@@ -122,21 +122,18 @@ export function Sidebar() {
       )}
     >
       <div className="flex h-16 items-center justify-between gap-2 px-4 border-b border-zinc-900/80">
-        <div className="flex items-center gap-2.5 overflow-hidden">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-gradient text-white text-sm font-black tracking-tight shadow-glow">
-            L
+        {collapsed ? (
+          <img
+            src="/lito-icon.svg?v=4"
+            alt="Lito Academy"
+            className="h-9 w-auto object-contain"
+            onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+          />
+        ) : (
+          <div className="text-[14px] font-black tracking-[0.22em] text-zinc-100 truncate">
+            LITO ACADEMY
           </div>
-          {!collapsed && (
-            <div className="leading-tight overflow-hidden">
-              <div className="text-[12px] font-black tracking-[0.22em] text-zinc-100">
-                LITO ACADEMY
-              </div>
-              <div className="text-[9px] tracking-[0.18em] uppercase text-zinc-500 mt-0.5">
-                Plataforma de Vendas
-              </div>
-            </div>
-          )}
-        </div>
+        )}
         <button
           onClick={() => setCollapsed((v) => !v)}
           className="rounded-lg p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-900 transition-colors"

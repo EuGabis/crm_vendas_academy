@@ -75,14 +75,14 @@ export function Login() {
 
       <Card className="relative w-full max-w-md !p-8">
         <div className="flex flex-col items-center mb-8">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-gradient text-white text-2xl font-black shadow-glow mb-4">
-            L
-          </div>
-          <div className="text-[15px] font-black tracking-[0.22em] text-white">
+          <img
+            src="/lito-icon.svg?v=4"
+            alt="Lito Academy"
+            className="h-16 w-auto object-contain mb-4"
+            onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+          />
+          <div className="text-[16px] font-black tracking-[0.22em] text-white">
             LITO ACADEMY
-          </div>
-          <div className="text-[10px] tracking-[0.18em] uppercase text-zinc-500 mt-1">
-            Plataforma de Vendas
           </div>
         </div>
 
