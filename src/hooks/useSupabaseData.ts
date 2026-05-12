@@ -343,12 +343,14 @@ export function useDashboardDatasets() {
   const goals = useMonthlyGoals();
   const traffic = useTrafficSpend();
 
-  const isLoading =
-    sellers.isLoading ||
-    courses.isLoading ||
-    leads.isLoading ||
-    sales.isLoading ||
-    goals.isLoading ||
+  // "isLoading" só na primeira carga (todas pending sem dados ainda).
+  // Se alguma já voltou, não mostra loading global — usa dados parciais.
+  const allPending =
+    sellers.isLoading &&
+    courses.isLoading &&
+    leads.isLoading &&
+    sales.isLoading &&
+    goals.isLoading &&
     traffic.isLoading;
 
   const error =
@@ -366,7 +368,7 @@ export function useDashboardDatasets() {
     sales: sales.data ?? [],
     goals: goals.data ?? [],
     traffic: traffic.data ?? [],
-    isLoading,
+    isLoading: allPending,
     error,
   };
 }
