@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSupabase } from '@/lib/supabase';
+import { restGet, restUpdate } from '@/lib/supabase';
 import type { UserRole } from '@/lib/auth';
 
 export interface ProfileRow {
@@ -7,25 +7,20 @@ export interface ProfileRow {
   role: UserRole;
   seller_id: string | null;
   created_at: string;
-  email?: string;
-}
-
-function sb() {
-  const c = getSupabase();
-  if (!c) throw new Error('Supabase não configurado');
-  return c;
 }
 
 export function useProfiles() {
   return useQuery({
     queryKey: ['profiles'],
     queryFn: async (): Promise<ProfileRow[]> => {
-      const { data, error } = await sb()
-        .from('profiles')
-        .select('id, role, seller_id, created_at')
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as ProfileRow[];
+      try {
+        return await restGet<ProfileRow[]>(
+          'profiles?select=id,role,seller_id,created_at&order=created_at.desc',
+        );
+      } catch (err) {
+        console.warn('[REST] profiles falhou:', (err as Error).message);
+        return [];
+      }
     },
   });
 }
@@ -37,8 +32,7 @@ export function useUpdateProfile() {
       const payload: Record<string, unknown> = {};
       if (p.role !== undefined) payload.role = p.role;
       if (p.seller_id !== undefined) payload.seller_id = p.seller_id;
-      const { error } = await sb().from('profiles').update(payload).eq('id', p.id);
-      if (error) throw error;
+      return restUpdate('profiles', `id=eq.${p.id}`, payload);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['profiles'] }),
   });

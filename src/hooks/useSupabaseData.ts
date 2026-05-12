@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getSupabase } from '@/lib/supabase';
+import { restGet, restInsert, restUpdate, restDelete } from '@/lib/supabase';
 import type {
   Seller,
   Course,
@@ -9,65 +9,49 @@ import type {
   TrafficSpend,
 } from '@/types/domain';
 
-function sb() {
-  const c = getSupabase();
-  if (!c) throw new Error('Supabase não configurado');
-  return c;
-}
-
 const QUERY_TIMEOUT_MS = 15000;
 
 /**
- * Executa uma query do Supabase com timeout.
- * Se a query demorar mais que QUERY_TIMEOUT_MS ou der erro,
- * retorna dados vazios + loga warning. NUNCA throw — UI nunca trava.
+ * Fetch com timeout via AbortSignal. Se a query falhar/expirar,
+ * retorna [] em vez de levantar erro — UI nunca trava.
  */
-async function safeFetch<T>(
-  label: string,
-  promise: PromiseLike<{ data: T[] | null; error: unknown }>,
-): Promise<T[]> {
+async function safeGet<T>(label: string, path: string): Promise<T[]> {
   const start = performance.now();
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), QUERY_TIMEOUT_MS);
   try {
-    const result = await Promise.race([
-      Promise.resolve(promise),
-      new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), QUERY_TIMEOUT_MS),
-      ),
-    ]);
+    const rows = await restGet<T[]>(path, ctrl.signal);
     const ms = Math.round(performance.now() - start);
-    if (result.error) {
-      console.warn(`[Supabase] ${label} retornou erro em ${ms}ms:`, result.error);
-      return [];
-    }
-    console.info(`[Supabase] ${label} OK em ${ms}ms (${result.data?.length ?? 0} rows)`);
-    return result.data ?? [];
+    console.info(`[REST] ${label} OK em ${ms}ms (${rows.length} rows)`);
+    return rows;
   } catch (err) {
     const ms = Math.round(performance.now() - start);
-    console.warn(`[Supabase] ${label} falhou em ${ms}ms:`, (err as Error).message);
+    console.warn(`[REST] ${label} falhou em ${ms}ms:`, (err as Error).message);
     return [];
+  } finally {
+    clearTimeout(timer);
   }
 }
 
 // ============================================================================
 // Sellers
 // ============================================================================
+type SellerRow = {
+  id: string;
+  full_name: string;
+  email: string;
+  team: string;
+  avatar_color: string;
+  active: boolean;
+};
+
 export function useSellers() {
   return useQuery({
     queryKey: ['sellers'],
     queryFn: async (): Promise<Seller[]> => {
-      const rows = await safeFetch<{
-        id: string;
-        full_name: string;
-        email: string;
-        team: string;
-        avatar_color: string;
-        active: boolean;
-      }>(
+      const rows = await safeGet<SellerRow>(
         'sellers',
-        sb()
-          .from('sellers')
-          .select('id, full_name, email, team, avatar_color, active')
-          .order('full_name'),
+        'sellers?select=id,full_name,email,team,avatar_color,active&order=full_name.asc',
       );
       return rows.map((r) => ({
         id: r.id,
@@ -85,23 +69,17 @@ export function useUpsertSeller() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (s: Partial<Seller> & { fullName: string; email: string }) => {
-      const payload: Record<string, unknown> = {
+      const payload = {
         full_name: s.fullName,
         email: s.email,
         team: s.team ?? 'Closer',
         avatar_color: s.avatarColor ?? '#8b5cf6',
         active: s.active ?? true,
       };
-      if (s.id) payload.id = s.id;
-      const query = s.id
-        ? sb().from('sellers').update(payload).eq('id', s.id).select().single()
-        : sb().from('sellers').insert(payload).select().single();
-      const { data, error } = await query;
-      if (error) {
-        console.error('[upsertSeller] erro:', error);
-        throw new Error(error.message || 'Falha ao salvar vendedor');
+      if (s.id) {
+        return restUpdate<SellerRow>('sellers', `id=eq.${s.id}`, payload);
       }
-      return data;
+      return restInsert<SellerRow>('sellers', payload);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sellers'] }),
   });
@@ -110,10 +88,7 @@ export function useUpsertSeller() {
 export function useDeleteSeller() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await sb().from('sellers').delete().eq('id', id);
-      if (error) throw error;
-    },
+    mutationFn: async (id: string) => restDelete('sellers', `id=eq.${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sellers'] }),
   });
 }
@@ -121,13 +96,15 @@ export function useDeleteSeller() {
 // ============================================================================
 // Courses
 // ============================================================================
+type CourseRow = { id: string; name: string; price: number | string };
+
 export function useCourses() {
   return useQuery({
     queryKey: ['courses'],
     queryFn: async (): Promise<Course[]> => {
-      const rows = await safeFetch<{ id: string; name: string; price: number | string }>(
+      const rows = await safeGet<CourseRow>(
         'courses',
-        sb().from('courses').select('id, name, price').order('name'),
+        'courses?select=id,name,price&order=name.asc',
       );
       return rows.map((r) => ({ id: r.id, name: r.name, price: Number(r.price) }));
     },
@@ -138,16 +115,9 @@ export function useUpsertCourse() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (c: Partial<Course> & { name: string; price: number }) => {
-      const payload: Record<string, unknown> = { name: c.name, price: c.price };
-      const query = c.id
-        ? sb().from('courses').update(payload).eq('id', c.id).select().single()
-        : sb().from('courses').insert(payload).select().single();
-      const { data, error } = await query;
-      if (error) {
-        console.error('[upsertCourse] erro:', error);
-        throw new Error(error.message || 'Falha ao salvar curso');
-      }
-      return data;
+      const payload = { name: c.name, price: c.price };
+      if (c.id) return restUpdate<CourseRow>('courses', `id=eq.${c.id}`, payload);
+      return restInsert<CourseRow>('courses', payload);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['courses'] }),
   });
@@ -156,10 +126,7 @@ export function useUpsertCourse() {
 export function useDeleteCourse() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await sb().from('courses').delete().eq('id', id);
-      if (error) throw error;
-    },
+    mutationFn: async (id: string) => restDelete('courses', `id=eq.${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['courses'] }),
   });
 }
@@ -167,21 +134,21 @@ export function useDeleteCourse() {
 // ============================================================================
 // Monthly Goals
 // ============================================================================
+type GoalRow = {
+  seller_id: string;
+  year_month: string;
+  revenue_goal: number | string;
+  courses_goal: number;
+  business_days: number;
+};
+
 export function useMonthlyGoals() {
   return useQuery({
     queryKey: ['monthly_goals'],
     queryFn: async (): Promise<MonthlyGoal[]> => {
-      const rows = await safeFetch<{
-        seller_id: string;
-        year_month: string;
-        revenue_goal: number | string;
-        courses_goal: number;
-        business_days: number;
-      }>(
+      const rows = await safeGet<GoalRow>(
         'monthly_goals',
-        sb()
-          .from('monthly_goals')
-          .select('seller_id, year_month, revenue_goal, courses_goal, business_days'),
+        'monthly_goals?select=seller_id,year_month,revenue_goal,courses_goal,business_days',
       );
       return rows.map((r) => ({
         sellerId: r.seller_id,
@@ -205,10 +172,16 @@ export function useUpsertGoal() {
         courses_goal: g.coursesGoal,
         business_days: g.businessDays,
       };
-      const { error } = await sb()
-        .from('monthly_goals')
-        .upsert(payload, { onConflict: 'seller_id,year_month' });
-      if (error) throw error;
+      // Tenta update primeiro (idempotente); se 0 rows, insert
+      try {
+        await restUpdate(
+          'monthly_goals',
+          `seller_id=eq.${g.sellerId}&year_month=eq.${g.yearMonth}`,
+          payload,
+        );
+      } catch {
+        await restInsert('monthly_goals', payload);
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['monthly_goals'] }),
   });
@@ -217,23 +190,22 @@ export function useUpsertGoal() {
 // ============================================================================
 // Leads
 // ============================================================================
+type LeadRow = {
+  id: string;
+  seller_id: string | null;
+  source: string | null;
+  stage: Lead['stage'];
+  created_at: string;
+  stage_changed_at: string;
+};
+
 export function useLeads() {
   return useQuery({
     queryKey: ['leads'],
     queryFn: async (): Promise<Lead[]> => {
-      const rows = await safeFetch<{
-        id: string;
-        seller_id: string | null;
-        source: string | null;
-        stage: Lead['stage'];
-        created_at: string;
-        stage_changed_at: string;
-      }>(
+      const rows = await safeGet<LeadRow>(
         'leads',
-        sb()
-          .from('leads')
-          .select('id, seller_id, source, stage, created_at, stage_changed_at')
-          .order('created_at', { ascending: false }),
+        'leads?select=id,seller_id,source,stage,created_at,stage_changed_at&order=created_at.desc',
       );
       return rows.map((r) => ({
         id: r.id,
@@ -258,14 +230,8 @@ export function useUpsertLead() {
         stage_changed_at: l.stageChangedAt ?? new Date().toISOString(),
       };
       if (l.createdAt) payload.created_at = l.createdAt;
-      const query = l.id
-        ? sb().from('leads').update(payload).eq('id', l.id)
-        : sb().from('leads').insert(payload);
-      const { error } = await query;
-      if (error) {
-        console.error('[upsertLead] erro:', error);
-        throw new Error(error.message || 'Falha ao salvar lead');
-      }
+      if (l.id) return restUpdate('leads', `id=eq.${l.id}`, payload);
+      return restInsert('leads', payload);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['leads'] }),
   });
@@ -274,10 +240,7 @@ export function useUpsertLead() {
 export function useDeleteLead() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await sb().from('leads').delete().eq('id', id);
-      if (error) throw error;
-    },
+    mutationFn: async (id: string) => restDelete('leads', `id=eq.${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['leads'] }),
   });
 }
@@ -285,27 +248,24 @@ export function useDeleteLead() {
 // ============================================================================
 // Sales
 // ============================================================================
+type SaleRow = {
+  id: string;
+  seller_id: string;
+  lead_id: string | null;
+  course_id: string;
+  amount: number | string;
+  payment_method: Sale['paymentMethod'];
+  installments: number;
+  sold_at: string;
+};
+
 export function useSales() {
   return useQuery({
     queryKey: ['sales'],
     queryFn: async (): Promise<Sale[]> => {
-      const rows = await safeFetch<{
-        id: string;
-        seller_id: string;
-        lead_id: string | null;
-        course_id: string;
-        amount: number | string;
-        payment_method: Sale['paymentMethod'];
-        installments: number;
-        sold_at: string;
-      }>(
+      const rows = await safeGet<SaleRow>(
         'sales',
-        sb()
-          .from('sales')
-          .select(
-            'id, seller_id, lead_id, course_id, amount, payment_method, installments, sold_at',
-          )
-          .order('sold_at', { ascending: false }),
+        'sales?select=id,seller_id,lead_id,course_id,amount,payment_method,installments,sold_at&order=sold_at.desc',
       );
       return rows.map((r) => ({
         id: r.id,
@@ -332,7 +292,7 @@ export function useUpsertSale() {
         paymentMethod: Sale['paymentMethod'];
       },
     ) => {
-      const payload: Record<string, unknown> = {
+      const payload = {
         seller_id: s.sellerId,
         lead_id: s.leadId ?? null,
         course_id: s.courseId,
@@ -341,14 +301,8 @@ export function useUpsertSale() {
         installments: s.installments ?? 1,
         sold_at: s.soldAt ?? new Date().toISOString(),
       };
-      const query = s.id
-        ? sb().from('sales').update(payload).eq('id', s.id)
-        : sb().from('sales').insert(payload);
-      const { error } = await query;
-      if (error) {
-        console.error('[upsertSale] erro:', error);
-        throw new Error(error.message || 'Falha ao salvar venda');
-      }
+      if (s.id) return restUpdate('sales', `id=eq.${s.id}`, payload);
+      return restInsert('sales', payload);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sales'] }),
   });
@@ -357,10 +311,7 @@ export function useUpsertSale() {
 export function useDeleteSale() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await sb().from('sales').delete().eq('id', id);
-      if (error) throw error;
-    },
+    mutationFn: async (id: string) => restDelete('sales', `id=eq.${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sales'] }),
   });
 }
@@ -368,21 +319,20 @@ export function useDeleteSale() {
 // ============================================================================
 // Traffic Spend
 // ============================================================================
+type TrafficRow = {
+  id: string;
+  spend_date: string;
+  channel: string;
+  amount: number | string;
+};
+
 export function useTrafficSpend() {
   return useQuery({
     queryKey: ['traffic_spend'],
     queryFn: async (): Promise<TrafficSpend[]> => {
-      const rows = await safeFetch<{
-        id: string;
-        spend_date: string;
-        channel: string;
-        amount: number | string;
-      }>(
+      const rows = await safeGet<TrafficRow>(
         'traffic_spend',
-        sb()
-          .from('traffic_spend')
-          .select('id, spend_date, channel, amount')
-          .order('spend_date', { ascending: false }),
+        'traffic_spend?select=id,spend_date,channel,amount&order=spend_date.desc',
       );
       return rows.map((r) => ({
         id: r.id,
@@ -400,19 +350,9 @@ export function useUpsertTrafficSpend() {
     mutationFn: async (
       t: Partial<TrafficSpend> & { spendDate: string; channel: string; amount: number },
     ) => {
-      const payload: Record<string, unknown> = {
-        spend_date: t.spendDate,
-        channel: t.channel,
-        amount: t.amount,
-      };
-      const query = t.id
-        ? sb().from('traffic_spend').update(payload).eq('id', t.id)
-        : sb().from('traffic_spend').insert(payload);
-      const { error } = await query;
-      if (error) {
-        console.error('[upsertTrafficSpend] erro:', error);
-        throw new Error(error.message || 'Falha ao salvar gasto');
-      }
+      const payload = { spend_date: t.spendDate, channel: t.channel, amount: t.amount };
+      if (t.id) return restUpdate('traffic_spend', `id=eq.${t.id}`, payload);
+      return restInsert('traffic_spend', payload);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['traffic_spend'] }),
   });
@@ -421,10 +361,7 @@ export function useUpsertTrafficSpend() {
 export function useDeleteTrafficSpend() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await sb().from('traffic_spend').delete().eq('id', id);
-      if (error) throw error;
-    },
+    mutationFn: async (id: string) => restDelete('traffic_spend', `id=eq.${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['traffic_spend'] }),
   });
 }
@@ -440,9 +377,6 @@ export function useDashboardDatasets() {
   const goals = useMonthlyGoals();
   const traffic = useTrafficSpend();
 
-  // Como safeFetch nunca rejeita, "isLoading" = true só na PRIMEIRA fetch.
-  // Quando resolve (mesmo com erro de rede), data vira [] e isLoading=false.
-  // Resultado: UI mostra empty state corretamente, sem travamento.
   const isLoading = sellers.isLoading && !sellers.data;
 
   return {

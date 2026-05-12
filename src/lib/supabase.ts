@@ -22,38 +22,80 @@ export function getSupabase(): SupabaseClient | null {
 }
 
 /**
- * Faz fetch direto na REST API do Supabase, contornando o supabase-js.
- * Útil quando o SDK trava — alguns proxies/middleware não gostam dos
- * headers internos do SDK (sb-*).
+ * REST client direto, contornando o supabase-js.
+ * O SDK envia headers extras (x-client-info, Prefer params) que disparam
+ * preflight CORS travando 15s em alguns proxies. Fetch direto evita isso.
  */
-export async function rawSupabaseGet<T>(
-  path: string,
-  signal?: AbortSignal,
-): Promise<T> {
-  if (!url || !anonKey) throw new Error('Supabase não configurado');
-  const sessionRaw = localStorage.getItem(
-    `sb-${new URL(url).hostname.split('.')[0]}-auth-token`,
-  );
-  let token = anonKey;
-  if (sessionRaw) {
-    try {
-      const session = JSON.parse(sessionRaw);
-      if (session?.access_token) token = session.access_token;
-    } catch {
-      /* noop */
+function getAuthToken(): string {
+  if (!url || !anonKey) return anonKey;
+  try {
+    const c = getSupabase();
+    if (c) {
+      // tenta pegar do localStorage do SDK
+      const ref = new URL(url).hostname.split('.')[0];
+      const raw = localStorage.getItem(`sb-${ref}-auth-token`);
+      if (raw) {
+        const session = JSON.parse(raw);
+        if (session?.access_token) return session.access_token;
+      }
     }
+  } catch {
+    /* noop */
   }
+  return anonKey;
+}
+
+function baseHeaders(extra?: Record<string, string>) {
+  return {
+    apikey: anonKey,
+    Authorization: `Bearer ${getAuthToken()}`,
+    'Content-Type': 'application/json',
+    ...(extra ?? {}),
+  };
+}
+
+export async function restGet<T>(path: string, signal?: AbortSignal): Promise<T> {
   const r = await fetch(`${url}/rest/v1/${path}`, {
     method: 'GET',
-    headers: {
-      apikey: anonKey,
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
+    headers: baseHeaders(),
     signal,
   });
   if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
   return r.json() as Promise<T>;
+}
+
+export async function restInsert<T>(table: string, body: object): Promise<T> {
+  const r = await fetch(`${url}/rest/v1/${table}`, {
+    method: 'POST',
+    headers: baseHeaders({ Prefer: 'return=representation' }),
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+  const json = await r.json();
+  return Array.isArray(json) ? (json[0] as T) : (json as T);
+}
+
+export async function restUpdate<T>(
+  table: string,
+  filter: string,
+  body: object,
+): Promise<T> {
+  const r = await fetch(`${url}/rest/v1/${table}?${filter}`, {
+    method: 'PATCH',
+    headers: baseHeaders({ Prefer: 'return=representation' }),
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+  const json = await r.json();
+  return Array.isArray(json) ? (json[0] as T) : (json as T);
+}
+
+export async function restDelete(table: string, filter: string): Promise<void> {
+  const r = await fetch(`${url}/rest/v1/${table}?${filter}`, {
+    method: 'DELETE',
+    headers: baseHeaders(),
+  });
+  if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
 }
 
 export function isSupabaseConfigured() {
