@@ -1,10 +1,19 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/empty-state';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -16,24 +25,67 @@ import { useProfiles, useUpdateProfile } from '@/hooks/useProfiles';
 import { useSellers } from '@/hooks/useSupabaseData';
 import type { UserRole } from '@/lib/auth';
 import { useAuth } from '@/lib/auth';
-import { UserPlus, ShieldCheck, ExternalLink } from 'lucide-react';
+import { UserPlus, ShieldCheck, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { getSupabase } from '@/lib/supabase';
 
-const ROLES: { value: UserRole; label: string; variant: 'success' | 'default' | 'warning' | 'muted' }[] = [
-  { value: 'admin', label: 'Admin', variant: 'success' },
-  { value: 'manager', label: 'Gestor', variant: 'default' },
-  { value: 'seller', label: 'Vendedor', variant: 'warning' },
-  { value: 'viewer', label: 'Visualizador', variant: 'muted' },
+const ROLES: {
+  value: UserRole;
+  label: string;
+  variant: 'success' | 'default' | 'warning' | 'muted';
+  description: string;
+}[] = [
+  {
+    value: 'admin',
+    label: 'Admin',
+    variant: 'success',
+    description: 'Acesso total — pode gerenciar tudo',
+  },
+  {
+    value: 'manager',
+    label: 'Gestor',
+    variant: 'default',
+    description: 'Vê todos os dados e gerencia equipe',
+  },
+  {
+    value: 'seller',
+    label: 'Vendedor',
+    variant: 'warning',
+    description: 'Vinculado a um vendedor (vê só os dados próprios)',
+  },
+  {
+    value: 'viewer',
+    label: 'Visualizador',
+    variant: 'muted',
+    description: 'Apenas leitura — sem alterações',
+  },
 ];
+
+interface DraftUser {
+  email: string;
+  password: string;
+  full_name: string;
+  role: UserRole;
+  seller_id: string | null;
+}
+
+const EMPTY_DRAFT: DraftUser = {
+  email: '',
+  password: '',
+  full_name: '',
+  role: 'viewer',
+  seller_id: null,
+};
 
 export function AdminUsuarios() {
   const { user } = useAuth();
-  const { data: profiles = [], isLoading, error } = useProfiles();
+  const { data: profiles = [], isLoading, error, refetch } = useProfiles();
   const { data: sellers = [] } = useSellers();
   const updateProfile = useUpdateProfile();
 
-  const [inviteOpen, setInviteOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [draft, setDraft] = useState<DraftUser>(EMPTY_DRAFT);
+  const [submitting, setSubmitting] = useState(false);
 
   async function handleRoleChange(profileId: string, role: UserRole) {
     if (profileId === user?.id && role !== 'admin') {
@@ -57,6 +109,49 @@ export function AdminUsuarios() {
     }
   }
 
+  async function handleCreateUser(e: FormEvent) {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      // Pega o JWT atual pra autenticar a chamada admin
+      const sb = getSupabase();
+      const { data: sessionData } = (await sb?.auth.getSession()) ?? { data: { session: null } };
+      const token = sessionData.session?.access_token;
+      if (!token) {
+        toast.error('Sessão expirada — faça login novamente');
+        setSubmitting(false);
+        return;
+      }
+
+      const resp = await fetch('/api/admin/create-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(draft),
+      });
+
+      if (!resp.ok) {
+        const errBody = await resp.json().catch(() => ({ error: 'Erro desconhecido' }));
+        toast.error('Falha: ' + (errBody.error ?? resp.statusText));
+        setSubmitting(false);
+        return;
+      }
+
+      const result = await resp.json();
+      toast.success(`Usuário ${result.email} criado como ${result.role}`);
+      setCreateOpen(false);
+      setDraft(EMPTY_DRAFT);
+      refetch();
+    } catch (err) {
+      toast.error('Falha: ' + (err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <>
       <Header
@@ -73,19 +168,18 @@ export function AdminUsuarios() {
               <p className="text-sm font-semibold text-white">Como funciona</p>
               <ul className="text-xs text-zinc-400 mt-2 space-y-1 list-disc pl-4">
                 <li>
-                  Usuários novos são criados pelo painel do <strong>Supabase Auth</strong> e
-                  recebem automaticamente role <strong>viewer</strong>.
+                  Clique em <strong>Criar usuário</strong> para adicionar um novo acesso à plataforma.
                 </li>
                 <li>
-                  Aqui você promove para <strong>admin</strong> (acesso total), <strong>gestor</strong>{' '}
-                  ou <strong>vendedor</strong> (vinculado a um seller).
+                  Defina <strong>role</strong> (admin / gestor / vendedor / visualizador) e
+                  opcionalmente vincule a um vendedor cadastrado.
                 </li>
                 <li>
-                  Apenas admins veem este painel e podem modificar roles.
+                  O usuário já é criado com email confirmado — pode logar imediatamente.
                 </li>
               </ul>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setInviteOpen(true)}>
+            <Button onClick={() => setCreateOpen(true)}>
               <UserPlus className="h-4 w-4" /> Criar usuário
             </Button>
           </div>
@@ -98,7 +192,7 @@ export function AdminUsuarios() {
         ) : profiles.length === 0 ? (
           <EmptyState
             title="Nenhum usuário cadastrado ainda"
-            description="Use 'Criar usuário' acima para abrir o painel do Supabase Auth."
+            description="Clique em 'Criar usuário' acima para adicionar o primeiro acesso."
             icon={UserPlus}
           />
         ) : (
@@ -129,7 +223,9 @@ export function AdminUsuarios() {
                               </AvatarFallback>
                             </Avatar>
                             <div className="leading-tight">
-                              <code className="text-[10px] text-zinc-500">{p.id.slice(0, 8)}...</code>
+                              <code className="text-[10px] text-zinc-500">
+                                {p.id.slice(0, 8)}...
+                              </code>
                               {isMe && (
                                 <Badge variant="default" className="ml-2 text-[9px]">
                                   você
@@ -198,40 +294,112 @@ export function AdminUsuarios() {
         )}
       </div>
 
-      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Criar novo usuário</DialogTitle>
             <DialogDescription>
-              A criação de usuários do Supabase Auth é feita pelo painel administrativo do Supabase
-              por segurança. Siga os 3 passos abaixo.
+              O usuário receberá acesso imediato com a role definida abaixo.
             </DialogDescription>
           </DialogHeader>
-          <ol className="text-sm text-zinc-300 space-y-3 list-decimal pl-4">
-            <li>
-              Abra o painel Supabase →{' '}
-              <a
-                href={`${import.meta.env.VITE_SUPABASE_URL ?? '#'}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-brand-400 hover:underline inline-flex items-center gap-1"
+          <form onSubmit={handleCreateUser} className="space-y-4">
+            <div>
+              <label className="text-xs font-medium text-zinc-400 mb-1.5 block">
+                Nome completo
+              </label>
+              <Input
+                value={draft.full_name}
+                onChange={(e) => setDraft((d) => ({ ...d, full_name: e.target.value }))}
+                placeholder="Ex: Helena Martins Silva"
+                autoFocus
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-zinc-400 mb-1.5 block">Email</label>
+                <Input
+                  type="email"
+                  value={draft.email}
+                  onChange={(e) => setDraft((d) => ({ ...d, email: e.target.value }))}
+                  placeholder="usuario@litoacademy.com"
+                  required
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-zinc-400 mb-1.5 block">
+                  Senha inicial
+                </label>
+                <Input
+                  type="text"
+                  value={draft.password}
+                  onChange={(e) => setDraft((d) => ({ ...d, password: e.target.value }))}
+                  placeholder="Mínimo 8 caracteres"
+                  required
+                  minLength={8}
+                />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-zinc-400 mb-1.5 block">Role</label>
+              <Select
+                value={draft.role}
+                onValueChange={(v) => setDraft((d) => ({ ...d, role: v as UserRole }))}
               >
-                Authentication → Users <ExternalLink className="h-3 w-3" />
-              </a>
-            </li>
-            <li>
-              Clique em <strong>Add user → Create new user</strong>. Preencha email e senha (marque
-              "Auto Confirm" para evitar o email de verificação).
-            </li>
-            <li>
-              Volte aqui. O novo usuário aparecerá na lista com role <strong>viewer</strong> — você
-              pode promover a <strong>admin</strong>, <strong>gestor</strong> ou{' '}
-              <strong>vendedor</strong> e vinculá-lo a um Seller no dropdown ao lado.
-            </li>
-          </ol>
-          <div className="flex justify-end pt-2">
-            <Button onClick={() => setInviteOpen(false)}>Entendi</Button>
-          </div>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLES.map((r) => (
+                    <SelectItem key={r.value} value={r.value}>
+                      {r.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-zinc-500 mt-1.5">
+                {ROLES.find((r) => r.value === draft.role)?.description}
+              </p>
+            </div>
+            {draft.role === 'seller' && (
+              <div>
+                <label className="text-xs font-medium text-zinc-400 mb-1.5 block">
+                  Vincular a um vendedor
+                </label>
+                <Select
+                  value={draft.seller_id ?? 'none'}
+                  onValueChange={(v) =>
+                    setDraft((d) => ({ ...d, seller_id: v === 'none' ? null : v }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {sellers.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.fullName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCreateOpen(false)}
+                disabled={submitting}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={submitting}>
+                {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                <UserPlus className="h-4 w-4" /> Criar usuário
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </>
