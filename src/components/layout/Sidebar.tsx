@@ -121,7 +121,7 @@ export function Sidebar() {
         collapsed ? 'w-[72px]' : 'w-64',
       )}
     >
-      <div className="flex h-16 items-center justify-between gap-2 px-4 border-b border-zinc-900/80">
+      <div className="flex h-16 items-center justify-center gap-2 px-4 border-b border-zinc-900/80 relative">
         {collapsed ? (
           <img
             src="/lito-icon.svg?v=4"
@@ -130,13 +130,11 @@ export function Sidebar() {
             onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
           />
         ) : (
-          <div className="text-[14px] font-black tracking-[0.22em] text-zinc-100 truncate">
-            LITO ACADEMY
-          </div>
+          <span className="brand-wordmark text-[22px] select-none">LITO ACADEMY</span>
         )}
         <button
           onClick={() => setCollapsed((v) => !v)}
-          className="rounded-lg p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-900 transition-colors"
+          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-900 transition-colors"
           aria-label="Recolher menu"
         >
           {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}

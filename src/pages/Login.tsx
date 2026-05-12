@@ -81,9 +81,7 @@ export function Login() {
             className="h-16 w-auto object-contain mb-4"
             onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
           />
-          <div className="text-[16px] font-black tracking-[0.22em] text-white">
-            LITO ACADEMY
-          </div>
+          <span className="brand-wordmark text-[28px] select-none">LITO ACADEMY</span>
         </div>
 
         <h1 className="text-xl font-bold text-white mb-1">Entrar na sua conta</h1>

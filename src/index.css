@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Bebas+Neue&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -71,6 +71,17 @@
 }
 
 @layer components {
+  .brand-wordmark {
+    font-family: 'Bebas Neue', 'Inter', sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.28em;
+    line-height: 1;
+    background: linear-gradient(135deg, #ffffff 0%, #c4b5fd 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
   .glass-card {
     @apply bg-zinc-900/60 backdrop-blur-xl border border-zinc-800/80 rounded-2xl;
   }
