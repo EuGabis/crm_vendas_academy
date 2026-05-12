@@ -61,13 +61,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
 
     // Timeout de segurança: se o getSession travar (CORS, rede fora, etc),
-    // libera o loading depois de 6s pra mostrar a tela de login.
+    // libera o loading depois de 15s pra mostrar a tela de login.
     const safetyTimeout = setTimeout(() => {
       if (!cancelled) {
         console.warn('[Auth] getSession() timeout — liberando tela de login');
         setLoading(false);
       }
-    }, 6000);
+    }, 15000);
 
     sb.auth
       .getSession()

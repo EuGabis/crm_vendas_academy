@@ -76,7 +76,7 @@ export function Login() {
       <Card className="relative w-full max-w-md !p-8">
         <div className="flex flex-col items-center mb-8">
           <img
-            src="/lito-full.svg"
+            src="/lito-full.svg?v=2"
             alt="Lito Academy"
             className="h-16 object-contain mb-2"
             onError={(e) => {

@@ -15,7 +15,7 @@ function sb() {
   return c;
 }
 
-const QUERY_TIMEOUT_MS = 6000;
+const QUERY_TIMEOUT_MS = 15000;
 
 /**
  * Executa uma query do Supabase com timeout.
@@ -26,6 +26,7 @@ async function safeFetch<T>(
   label: string,
   promise: PromiseLike<{ data: T[] | null; error: unknown }>,
 ): Promise<T[]> {
+  const start = performance.now();
   try {
     const result = await Promise.race([
       Promise.resolve(promise),
@@ -33,13 +34,16 @@ async function safeFetch<T>(
         setTimeout(() => reject(new Error('timeout')), QUERY_TIMEOUT_MS),
       ),
     ]);
+    const ms = Math.round(performance.now() - start);
     if (result.error) {
-      console.warn(`[Supabase] ${label} retornou erro:`, result.error);
+      console.warn(`[Supabase] ${label} retornou erro em ${ms}ms:`, result.error);
       return [];
     }
+    console.info(`[Supabase] ${label} OK em ${ms}ms (${result.data?.length ?? 0} rows)`);
     return result.data ?? [];
   } catch (err) {
-    console.warn(`[Supabase] ${label} falhou:`, (err as Error).message);
+    const ms = Math.round(performance.now() - start);
+    console.warn(`[Supabase] ${label} falhou em ${ms}ms:`, (err as Error).message);
     return [];
   }
 }
