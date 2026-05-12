@@ -141,7 +141,14 @@ export function AdminUsuarios() {
       }
 
       const result = await resp.json();
-      toast.success(`Usuário ${result.email} criado como ${result.role}`);
+      if (result.adopted) {
+        toast.success(
+          `Email ${result.email} já existia no Supabase — vinculado à Lito Academy como ${result.role}. Senha foi atualizada.`,
+          { duration: 6000 },
+        );
+      } else {
+        toast.success(`Usuário ${result.email} criado como ${result.role}`);
+      }
       setCreateOpen(false);
       setDraft(EMPTY_DRAFT);
       refetch();

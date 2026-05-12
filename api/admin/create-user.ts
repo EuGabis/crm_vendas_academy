@@ -80,7 +80,7 @@ export default async function handler(req: RequestLike, res: ResponseLike) {
     return res.status(400).json({ error: 'Senha deve ter pelo menos 8 caracteres' });
   }
 
-  // 4. Criar user no Supabase Auth
+  // 4. Tentar criar user no Supabase Auth
   const createResp = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
     method: 'POST',
     headers: {
@@ -96,33 +96,99 @@ export default async function handler(req: RequestLike, res: ResponseLike) {
     }),
   });
 
-  if (!createResp.ok) {
+  let userId: string;
+  let userEmail: string;
+  let adopted = false;
+
+  if (createResp.ok) {
+    const newUser = (await createResp.json()) as { id: string; email: string };
+    userId = newUser.id;
+    userEmail = newUser.email;
+  } else {
+    // Email já existe? Procura e adota (reset password + atualiza profile)
     const errText = await createResp.text();
-    return res.status(createResp.status).json({ error: errText });
+    if (!errText.toLowerCase().includes('email_exists') && createResp.status !== 422) {
+      return res.status(createResp.status).json({ error: errText });
+    }
+
+    // Busca user existente
+    const listResp = await fetch(`${SUPABASE_URL}/auth/v1/admin/users?per_page=1000`, {
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+    });
+    if (!listResp.ok) {
+      return res.status(500).json({ error: 'Falha ao buscar usuários existentes' });
+    }
+    const list = (await listResp.json()) as { users: Array<{ id: string; email: string }> };
+    const found = list.users?.find(
+      (u) => u.email?.toLowerCase() === body.email!.toLowerCase(),
+    );
+    if (!found) {
+      return res.status(422).json({
+        error: 'Email já existe mas não foi possível localizar o usuário.',
+      });
+    }
+
+    // Reset password + confirma email + atualiza metadata
+    const updateResp = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${found.id}`, {
+      method: 'PUT',
+      headers: {
+        apikey: SERVICE_KEY,
+        Authorization: `Bearer ${SERVICE_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        password: body.password,
+        email_confirm: true,
+        user_metadata: body.full_name ? { full_name: body.full_name } : {},
+      }),
+    });
+    if (!updateResp.ok) {
+      const upd = await updateResp.text();
+      return res.status(updateResp.status).json({
+        error: 'Falha ao adotar usuário existente: ' + upd,
+      });
+    }
+    userId = found.id;
+    userEmail = found.email;
+    adopted = true;
   }
-  const newUser = (await createResp.json()) as { id: string; email: string };
 
-  // 5. Atualizar profile com role + seller_id (o trigger já criou com role=viewer)
+  // 5. Garantir profile com role + seller_id (upsert manual: PATCH primeiro, se 0 rows, INSERT)
   const finalRole = body.role ?? 'viewer';
-  if (finalRole !== 'viewer' || body.seller_id !== undefined) {
-    const updatePayload: Record<string, unknown> = { role: finalRole };
-    if (body.seller_id !== undefined) updatePayload.seller_id = body.seller_id;
+  const profilePayload: Record<string, unknown> = { role: finalRole };
+  if (body.seller_id !== undefined) profilePayload.seller_id = body.seller_id;
 
-    await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${newUser.id}`, {
-      method: 'PATCH',
+  // tenta PATCH (caso o trigger já tenha criado o profile)
+  const patchResp = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}`, {
+    method: 'PATCH',
+    headers: {
+      apikey: SERVICE_KEY,
+      Authorization: `Bearer ${SERVICE_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+    },
+    body: JSON.stringify(profilePayload),
+  });
+  const patchResult = patchResp.ok ? ((await patchResp.json()) as unknown[]) : [];
+
+  // Se não atualizou nada (user adotado de outro projeto, sem profile), insere
+  if (Array.isArray(patchResult) && patchResult.length === 0) {
+    await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
+      method: 'POST',
       headers: {
         apikey: SERVICE_KEY,
         Authorization: `Bearer ${SERVICE_KEY}`,
         'Content-Type': 'application/json',
         Prefer: 'return=minimal',
       },
-      body: JSON.stringify(updatePayload),
+      body: JSON.stringify({ id: userId, ...profilePayload }),
     });
   }
 
   return res.status(200).json({
-    id: newUser.id,
-    email: newUser.email,
+    id: userId,
+    email: userEmail,
     role: finalRole,
+    adopted,
   });
 }
