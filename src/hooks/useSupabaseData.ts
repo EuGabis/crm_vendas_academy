@@ -15,6 +15,31 @@ function sb() {
   return c;
 }
 
+const QUERY_TIMEOUT_MS = 8000;
+
+/**
+ * Aborta a query do Supabase depois de QUERY_TIMEOUT_MS.
+ * Sem isso, requests travadas (rede ruim, DNS lento) deixam a UI em loading infinito.
+ */
+function withTimeout<T>(promise: PromiseLike<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(
+      () => reject(new Error('Tempo esgotado — verifique sua conexão')),
+      QUERY_TIMEOUT_MS,
+    );
+    Promise.resolve(promise).then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
+
 // ============================================================================
 // Sellers
 // ============================================================================
@@ -22,10 +47,12 @@ export function useSellers() {
   return useQuery({
     queryKey: ['sellers'],
     queryFn: async (): Promise<Seller[]> => {
-      const { data, error } = await sb()
-        .from('sellers')
-        .select('id, full_name, email, team, avatar_color, active')
-        .order('full_name');
+      const { data, error } = await withTimeout(
+        sb()
+          .from('sellers')
+          .select('id, full_name, email, team, avatar_color, active')
+          .order('full_name'),
+      );
       if (error) throw error;
       return (data ?? []).map((r) => ({
         id: r.id,
@@ -81,10 +108,9 @@ export function useCourses() {
   return useQuery({
     queryKey: ['courses'],
     queryFn: async (): Promise<Course[]> => {
-      const { data, error } = await sb()
-        .from('courses')
-        .select('id, name, price')
-        .order('name');
+      const { data, error } = await withTimeout(
+        sb().from('courses').select('id, name, price').order('name'),
+      );
       if (error) throw error;
       return (data ?? []).map((r) => ({ id: r.id, name: r.name, price: Number(r.price) }));
     },
@@ -126,9 +152,11 @@ export function useMonthlyGoals() {
   return useQuery({
     queryKey: ['monthly_goals'],
     queryFn: async (): Promise<MonthlyGoal[]> => {
-      const { data, error } = await sb()
-        .from('monthly_goals')
-        .select('seller_id, year_month, revenue_goal, courses_goal, business_days');
+      const { data, error } = await withTimeout(
+        sb()
+          .from('monthly_goals')
+          .select('seller_id, year_month, revenue_goal, courses_goal, business_days'),
+      );
       if (error) throw error;
       return (data ?? []).map((r) => ({
         sellerId: r.seller_id,
@@ -168,10 +196,12 @@ export function useLeads() {
   return useQuery({
     queryKey: ['leads'],
     queryFn: async (): Promise<Lead[]> => {
-      const { data, error } = await sb()
-        .from('leads')
-        .select('id, seller_id, source, stage, created_at, stage_changed_at')
-        .order('created_at', { ascending: false });
+      const { data, error } = await withTimeout(
+        sb()
+          .from('leads')
+          .select('id, seller_id, source, stage, created_at, stage_changed_at')
+          .order('created_at', { ascending: false }),
+      );
       if (error) throw error;
       return (data ?? []).map((r) => ({
         id: r.id,
@@ -222,12 +252,14 @@ export function useSales() {
   return useQuery({
     queryKey: ['sales'],
     queryFn: async (): Promise<Sale[]> => {
-      const { data, error } = await sb()
-        .from('sales')
-        .select(
-          'id, seller_id, lead_id, course_id, amount, payment_method, installments, sold_at',
-        )
-        .order('sold_at', { ascending: false });
+      const { data, error } = await withTimeout(
+        sb()
+          .from('sales')
+          .select(
+            'id, seller_id, lead_id, course_id, amount, payment_method, installments, sold_at',
+          )
+          .order('sold_at', { ascending: false }),
+      );
       if (error) throw error;
       return (data ?? []).map((r) => ({
         id: r.id,
@@ -289,10 +321,12 @@ export function useTrafficSpend() {
   return useQuery({
     queryKey: ['traffic_spend'],
     queryFn: async (): Promise<TrafficSpend[]> => {
-      const { data, error } = await sb()
-        .from('traffic_spend')
-        .select('id, spend_date, channel, amount')
-        .order('spend_date', { ascending: false });
+      const { data, error } = await withTimeout(
+        sb()
+          .from('traffic_spend')
+          .select('id, spend_date, channel, amount')
+          .order('spend_date', { ascending: false }),
+      );
       if (error) throw error;
       return (data ?? []).map((r) => ({
         id: r.id,
@@ -343,22 +377,17 @@ export function useDashboardDatasets() {
   const goals = useMonthlyGoals();
   const traffic = useTrafficSpend();
 
-  // "isLoading" só na primeira carga (todas pending sem dados ainda).
-  // Se alguma já voltou, não mostra loading global — usa dados parciais.
-  const allPending =
-    sellers.isLoading &&
-    courses.isLoading &&
-    leads.isLoading &&
-    sales.isLoading &&
-    goals.isLoading &&
-    traffic.isLoading;
+  // Loading SOMENTE enquanto a query crítica (sellers) está em primeira carga.
+  // As outras 5 podem chegar depois sem travar a UI.
+  const isLoading = sellers.isLoading && !sellers.data;
 
-  const error =
-    sellers.error ??
-    courses.error ??
-    leads.error ??
-    sales.error ??
-    goals.error ??
+  // Erro só importa se TODAS falharam (banco offline)
+  const allFailed =
+    sellers.error &&
+    courses.error &&
+    leads.error &&
+    sales.error &&
+    goals.error &&
     traffic.error;
 
   return {
@@ -368,7 +397,7 @@ export function useDashboardDatasets() {
     sales: sales.data ?? [],
     goals: goals.data ?? [],
     traffic: traffic.data ?? [],
-    isLoading: allPending,
-    error,
+    isLoading,
+    error: allFailed ? sellers.error : null,
   };
 }
