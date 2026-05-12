@@ -25,7 +25,7 @@ import { useProfiles, useUpdateProfile } from '@/hooks/useProfiles';
 import { useSellers } from '@/hooks/useSupabaseData';
 import type { UserRole } from '@/lib/auth';
 import { useAuth } from '@/lib/auth';
-import { UserPlus, ShieldCheck, Loader2 } from 'lucide-react';
+import { UserPlus, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getSupabase } from '@/lib/supabase';
 
@@ -166,31 +166,14 @@ export function AdminUsuarios() {
         subtitle="Gerencie quem tem acesso à plataforma e suas permissões"
       />
       <div className="p-8 space-y-6">
-        <Card>
-          <div className="flex items-start gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-500/15 text-blue-300 shrink-0">
-              <ShieldCheck className="h-4 w-4" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-white">Como funciona</p>
-              <ul className="text-xs text-zinc-400 mt-2 space-y-1 list-disc pl-4">
-                <li>
-                  Clique em <strong>Criar usuário</strong> para adicionar um novo acesso à plataforma.
-                </li>
-                <li>
-                  Defina <strong>role</strong> (admin / gestor / vendedor / visualizador) e
-                  opcionalmente vincule a um vendedor cadastrado.
-                </li>
-                <li>
-                  O usuário já é criado com email confirmado — pode logar imediatamente.
-                </li>
-              </ul>
-            </div>
-            <Button onClick={() => setCreateOpen(true)}>
-              <UserPlus className="h-4 w-4" /> Criar usuário
-            </Button>
-          </div>
-        </Card>
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-zinc-500">
+            {profiles.length} usuário(s) com acesso
+          </p>
+          <Button onClick={() => setCreateOpen(true)}>
+            <UserPlus className="h-4 w-4" /> Criar usuário
+          </Button>
+        </div>
 
         {isLoading ? (
           <LoadingState />
@@ -204,9 +187,6 @@ export function AdminUsuarios() {
           />
         ) : (
           <Card>
-            <h3 className="text-sm font-semibold text-white mb-4">
-              {profiles.length} usuário(s) com acesso
-            </h3>
             <div className="overflow-x-auto rounded-xl border border-zinc-800/80">
               <table className="w-full text-sm">
                 <thead className="bg-zinc-900/60 text-zinc-400 text-[11px] uppercase tracking-wider">
