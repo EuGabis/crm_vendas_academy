@@ -81,20 +81,22 @@ export function useUpsertSeller() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (s: Partial<Seller> & { fullName: string; email: string }) => {
-      const payload = {
-        id: s.id,
+      const payload: Record<string, unknown> = {
         full_name: s.fullName,
         email: s.email,
         team: s.team ?? 'Closer',
         avatar_color: s.avatarColor ?? '#8b5cf6',
         active: s.active ?? true,
       };
-      const { data, error } = await sb()
-        .from('sellers')
-        .upsert(payload, { onConflict: 'id' })
-        .select()
-        .single();
-      if (error) throw error;
+      if (s.id) payload.id = s.id;
+      const query = s.id
+        ? sb().from('sellers').update(payload).eq('id', s.id).select().single()
+        : sb().from('sellers').insert(payload).select().single();
+      const { data, error } = await query;
+      if (error) {
+        console.error('[upsertSeller] erro:', error);
+        throw new Error(error.message || 'Falha ao salvar vendedor');
+      }
       return data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sellers'] }),
@@ -132,13 +134,15 @@ export function useUpsertCourse() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (c: Partial<Course> & { name: string; price: number }) => {
-      const payload = { id: c.id, name: c.name, price: c.price };
-      const { data, error } = await sb()
-        .from('courses')
-        .upsert(payload, { onConflict: 'id' })
-        .select()
-        .single();
-      if (error) throw error;
+      const payload: Record<string, unknown> = { name: c.name, price: c.price };
+      const query = c.id
+        ? sb().from('courses').update(payload).eq('id', c.id).select().single()
+        : sb().from('courses').insert(payload).select().single();
+      const { data, error } = await query;
+      if (error) {
+        console.error('[upsertCourse] erro:', error);
+        throw new Error(error.message || 'Falha ao salvar curso');
+      }
       return data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['courses'] }),
@@ -243,16 +247,21 @@ export function useUpsertLead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (l: Partial<Lead> & { sellerId: string; stage: Lead['stage'] }) => {
-      const payload = {
-        id: l.id,
+      const payload: Record<string, unknown> = {
         seller_id: l.sellerId,
         source: l.source ?? 'Manual',
         stage: l.stage,
-        created_at: l.createdAt,
         stage_changed_at: l.stageChangedAt ?? new Date().toISOString(),
       };
-      const { error } = await sb().from('leads').upsert(payload, { onConflict: 'id' });
-      if (error) throw error;
+      if (l.createdAt) payload.created_at = l.createdAt;
+      const query = l.id
+        ? sb().from('leads').update(payload).eq('id', l.id)
+        : sb().from('leads').insert(payload);
+      const { error } = await query;
+      if (error) {
+        console.error('[upsertLead] erro:', error);
+        throw new Error(error.message || 'Falha ao salvar lead');
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['leads'] }),
   });
@@ -319,8 +328,7 @@ export function useUpsertSale() {
         paymentMethod: Sale['paymentMethod'];
       },
     ) => {
-      const payload = {
-        id: s.id,
+      const payload: Record<string, unknown> = {
         seller_id: s.sellerId,
         lead_id: s.leadId ?? null,
         course_id: s.courseId,
@@ -329,8 +337,14 @@ export function useUpsertSale() {
         installments: s.installments ?? 1,
         sold_at: s.soldAt ?? new Date().toISOString(),
       };
-      const { error } = await sb().from('sales').upsert(payload, { onConflict: 'id' });
-      if (error) throw error;
+      const query = s.id
+        ? sb().from('sales').update(payload).eq('id', s.id)
+        : sb().from('sales').insert(payload);
+      const { error } = await query;
+      if (error) {
+        console.error('[upsertSale] erro:', error);
+        throw new Error(error.message || 'Falha ao salvar venda');
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['sales'] }),
   });
@@ -382,16 +396,19 @@ export function useUpsertTrafficSpend() {
     mutationFn: async (
       t: Partial<TrafficSpend> & { spendDate: string; channel: string; amount: number },
     ) => {
-      const payload = {
-        id: t.id,
+      const payload: Record<string, unknown> = {
         spend_date: t.spendDate,
         channel: t.channel,
         amount: t.amount,
       };
-      const { error } = await sb()
-        .from('traffic_spend')
-        .upsert(payload, { onConflict: 'id' });
-      if (error) throw error;
+      const query = t.id
+        ? sb().from('traffic_spend').update(payload).eq('id', t.id)
+        : sb().from('traffic_spend').insert(payload);
+      const { error } = await query;
+      if (error) {
+        console.error('[upsertTrafficSpend] erro:', error);
+        throw new Error(error.message || 'Falha ao salvar gasto');
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['traffic_spend'] }),
   });
