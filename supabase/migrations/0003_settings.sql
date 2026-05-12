@@ -75,7 +75,7 @@ on conflict (user_id) do nothing;
 
 -- Pre-popular app_settings com defaults
 insert into public.app_settings (key, value) values
-  ('company', '{"name": "Lito Academy", "legal_name": "", "cnpj": "", "logo_url": "/lito-full.png", "support_email": ""}'::jsonb),
+  ('company', '{"name": "Lito Academy", "legal_name": "", "cnpj": "", "logo_url": "/lito-full.svg", "support_email": ""}'::jsonb),
   ('branding', '{"primary_color": "#8b5cf6", "show_logo_login": true}'::jsonb),
   ('bonus_tiers', '[
     {"threshold": 1.2, "bonus_pct": 0.05, "label": "Super Star"},

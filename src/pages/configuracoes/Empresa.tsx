@@ -17,7 +17,7 @@ const EMPTY: CompanySettings = {
   name: '',
   legal_name: '',
   cnpj: '',
-  logo_url: '/lito-full.png',
+  logo_url: '/lito-full.svg',
   support_email: '',
 };
 
@@ -109,12 +109,12 @@ export function ConfigEmpresa() {
       >
         <SettingsRow
           label="Logo horizontal"
-          description="Arquivo em /public/lito-full.png (recomendado: PNG, fundo transparente, 400×100)"
+          description="Arquivo em /public/lito-full.svg (recomendado: PNG, fundo transparente, 400×100)"
         >
           <div className="flex items-center gap-3">
             <div className="h-10 w-32 rounded-lg border border-zinc-800 bg-zinc-900/40 flex items-center justify-center overflow-hidden">
               <img
-                src="/lito-full.png"
+                src="/lito-full.svg"
                 alt="Logo"
                 className="max-h-full max-w-full object-contain"
                 onError={(e) => {
@@ -131,11 +131,11 @@ export function ConfigEmpresa() {
         </SettingsRow>
         <SettingsRow
           label="Ícone (sidebar colapsada)"
-          description="Arquivo em /public/lito-icon.png — formato quadrado, 96×96"
+          description="Arquivo em /public/lito-icon.svg — formato quadrado, 96×96"
         >
           <div className="h-10 w-10 rounded-lg border border-zinc-800 bg-zinc-900/40 flex items-center justify-center overflow-hidden">
             <img
-              src="/lito-icon.png"
+              src="/lito-icon.svg"
               alt="Ícone"
               className="max-h-full max-w-full object-contain"
               onError={(e) => {

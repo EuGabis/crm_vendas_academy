@@ -124,7 +124,7 @@ export function Sidebar() {
       <div className="flex h-16 items-center justify-between gap-2 px-4 border-b border-zinc-900/80">
         {collapsed ? (
           <img
-            src="/lito-icon.png"
+            src="/lito-icon.svg"
             alt="Lito Academy"
             className="h-9 w-9 object-contain"
             onError={(e) => {
@@ -133,7 +133,7 @@ export function Sidebar() {
           />
         ) : (
           <img
-            src="/lito-full.png"
+            src="/lito-full.svg"
             alt="Lito Academy"
             className="h-9 max-w-[170px] object-contain object-left"
             onError={(e) => {
