@@ -74,16 +74,16 @@ export function Login() {
       <div className="pointer-events-none absolute -bottom-32 -right-32 w-96 h-96 rounded-full bg-indigo-500/20 blur-3xl" />
 
       <Card className="relative w-full max-w-md !p-8">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-gradient text-white text-xl font-black shadow-glow">
-            L
-          </div>
-          <div>
-            <div className="text-[11px] font-bold tracking-[0.28em] text-zinc-100">
-              LITO ACADEMY
-            </div>
-            <div className="section-title">Vendas · Plataforma de Dados</div>
-          </div>
+        <div className="flex flex-col items-center mb-8">
+          <img
+            src="/lito-full.png"
+            alt="Lito Academy"
+            className="h-16 object-contain mb-2"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = 'none';
+            }}
+          />
+          <div className="section-title">Vendas · Plataforma de Dados</div>
         </div>
 
         <h1 className="text-xl font-bold text-white mb-1">Entrar na sua conta</h1>

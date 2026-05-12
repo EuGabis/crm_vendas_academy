@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
+import { ConfiguracoesLayout } from '@/components/layout/ConfiguracoesLayout';
 import { Login } from '@/pages/Login';
 import { FunilVendas } from '@/pages/FunilVendas';
 import { DashboardTimes } from '@/pages/DashboardTimes';
@@ -18,6 +19,13 @@ import { AdminLeads } from '@/pages/admin/AdminLeads';
 import { AdminMetas } from '@/pages/admin/AdminMetas';
 import { AdminTrafego } from '@/pages/admin/AdminTrafego';
 import { AdminUsuarios } from '@/pages/admin/AdminUsuarios';
+import { ConfigPerfil } from '@/pages/configuracoes/Perfil';
+import { ConfigSeguranca } from '@/pages/configuracoes/Seguranca';
+import { ConfigAparencia } from '@/pages/configuracoes/Aparencia';
+import { ConfigNotificacoes } from '@/pages/configuracoes/Notificacoes';
+import { ConfigEmpresa } from '@/pages/configuracoes/Empresa';
+import { ConfigDados } from '@/pages/configuracoes/Dados';
+import { ConfigSobre } from '@/pages/configuracoes/Sobre';
 
 export default function App() {
   return (
@@ -44,15 +52,37 @@ export default function App() {
           element={<Placeholder title="Customer Success" description="Em construção" />}
         />
         <Route
-          path="/configuracoes/geral"
-          element={<Placeholder title="Configurações" description="Em construção" />}
-        />
-        <Route
           path="/workspace"
           element={<Placeholder title="Workspace" description="Em construção" />}
         />
 
-        {/* Admin routes */}
+        {/* Configurações (sub-rotas com layout próprio) */}
+        <Route path="/configuracoes" element={<ConfiguracoesLayout />}>
+          <Route index element={<Navigate to="/configuracoes/perfil" replace />} />
+          <Route path="perfil" element={<ConfigPerfil />} />
+          <Route path="seguranca" element={<ConfigSeguranca />} />
+          <Route path="aparencia" element={<ConfigAparencia />} />
+          <Route path="notificacoes" element={<ConfigNotificacoes />} />
+          <Route
+            path="empresa"
+            element={
+              <ProtectedRoute requireAdmin>
+                <ConfigEmpresa />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="dados"
+            element={
+              <ProtectedRoute requireAdmin>
+                <ConfigDados />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="sobre" element={<ConfigSobre />} />
+        </Route>
+
+        {/* Admin */}
         <Route
           path="/admin/vendedores"
           element={
