@@ -16,16 +16,44 @@ export function getSupabase(): SupabaseClient | null {
         autoRefreshToken: true,
         detectSessionInUrl: false,
       },
-      realtime: {
-        // Desabilita realtime — evita WebSocket que pode travar em redes restritivas
-        params: { eventsPerSecond: 0 },
-      },
-      global: {
-        fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }),
-      },
     });
   }
   return _client;
+}
+
+/**
+ * Faz fetch direto na REST API do Supabase, contornando o supabase-js.
+ * Útil quando o SDK trava — alguns proxies/middleware não gostam dos
+ * headers internos do SDK (sb-*).
+ */
+export async function rawSupabaseGet<T>(
+  path: string,
+  signal?: AbortSignal,
+): Promise<T> {
+  if (!url || !anonKey) throw new Error('Supabase não configurado');
+  const sessionRaw = localStorage.getItem(
+    `sb-${new URL(url).hostname.split('.')[0]}-auth-token`,
+  );
+  let token = anonKey;
+  if (sessionRaw) {
+    try {
+      const session = JSON.parse(sessionRaw);
+      if (session?.access_token) token = session.access_token;
+    } catch {
+      /* noop */
+    }
+  }
+  const r = await fetch(`${url}/rest/v1/${path}`, {
+    method: 'GET',
+    headers: {
+      apikey: anonKey,
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    signal,
+  });
+  if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+  return r.json() as Promise<T>;
 }
 
 export function isSupabaseConfigured() {
