@@ -15,29 +15,33 @@ function sb() {
   return c;
 }
 
-const QUERY_TIMEOUT_MS = 8000;
+const QUERY_TIMEOUT_MS = 6000;
 
 /**
- * Aborta a query do Supabase depois de QUERY_TIMEOUT_MS.
- * Sem isso, requests travadas (rede ruim, DNS lento) deixam a UI em loading infinito.
+ * Executa uma query do Supabase com timeout.
+ * Se a query demorar mais que QUERY_TIMEOUT_MS ou der erro,
+ * retorna dados vazios + loga warning. NUNCA throw — UI nunca trava.
  */
-function withTimeout<T>(promise: PromiseLike<T>): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    const t = setTimeout(
-      () => reject(new Error('Tempo esgotado — verifique sua conexão')),
-      QUERY_TIMEOUT_MS,
-    );
-    Promise.resolve(promise).then(
-      (v) => {
-        clearTimeout(t);
-        resolve(v);
-      },
-      (e) => {
-        clearTimeout(t);
-        reject(e);
-      },
-    );
-  });
+async function safeFetch<T>(
+  label: string,
+  promise: PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<T[]> {
+  try {
+    const result = await Promise.race([
+      Promise.resolve(promise),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), QUERY_TIMEOUT_MS),
+      ),
+    ]);
+    if (result.error) {
+      console.warn(`[Supabase] ${label} retornou erro:`, result.error);
+      return [];
+    }
+    return result.data ?? [];
+  } catch (err) {
+    console.warn(`[Supabase] ${label} falhou:`, (err as Error).message);
+    return [];
+  }
 }
 
 // ============================================================================
@@ -47,14 +51,21 @@ export function useSellers() {
   return useQuery({
     queryKey: ['sellers'],
     queryFn: async (): Promise<Seller[]> => {
-      const { data, error } = await withTimeout(
+      const rows = await safeFetch<{
+        id: string;
+        full_name: string;
+        email: string;
+        team: string;
+        avatar_color: string;
+        active: boolean;
+      }>(
+        'sellers',
         sb()
           .from('sellers')
           .select('id, full_name, email, team, avatar_color, active')
           .order('full_name'),
       );
-      if (error) throw error;
-      return (data ?? []).map((r) => ({
+      return rows.map((r) => ({
         id: r.id,
         fullName: r.full_name,
         email: r.email,
@@ -108,11 +119,11 @@ export function useCourses() {
   return useQuery({
     queryKey: ['courses'],
     queryFn: async (): Promise<Course[]> => {
-      const { data, error } = await withTimeout(
+      const rows = await safeFetch<{ id: string; name: string; price: number | string }>(
+        'courses',
         sb().from('courses').select('id, name, price').order('name'),
       );
-      if (error) throw error;
-      return (data ?? []).map((r) => ({ id: r.id, name: r.name, price: Number(r.price) }));
+      return rows.map((r) => ({ id: r.id, name: r.name, price: Number(r.price) }));
     },
   });
 }
@@ -152,13 +163,19 @@ export function useMonthlyGoals() {
   return useQuery({
     queryKey: ['monthly_goals'],
     queryFn: async (): Promise<MonthlyGoal[]> => {
-      const { data, error } = await withTimeout(
+      const rows = await safeFetch<{
+        seller_id: string;
+        year_month: string;
+        revenue_goal: number | string;
+        courses_goal: number;
+        business_days: number;
+      }>(
+        'monthly_goals',
         sb()
           .from('monthly_goals')
           .select('seller_id, year_month, revenue_goal, courses_goal, business_days'),
       );
-      if (error) throw error;
-      return (data ?? []).map((r) => ({
+      return rows.map((r) => ({
         sellerId: r.seller_id,
         yearMonth: r.year_month,
         revenueGoal: Number(r.revenue_goal),
@@ -196,14 +213,21 @@ export function useLeads() {
   return useQuery({
     queryKey: ['leads'],
     queryFn: async (): Promise<Lead[]> => {
-      const { data, error } = await withTimeout(
+      const rows = await safeFetch<{
+        id: string;
+        seller_id: string | null;
+        source: string | null;
+        stage: Lead['stage'];
+        created_at: string;
+        stage_changed_at: string;
+      }>(
+        'leads',
         sb()
           .from('leads')
           .select('id, seller_id, source, stage, created_at, stage_changed_at')
           .order('created_at', { ascending: false }),
       );
-      if (error) throw error;
-      return (data ?? []).map((r) => ({
+      return rows.map((r) => ({
         id: r.id,
         sellerId: r.seller_id ?? '',
         source: r.source ?? '',
@@ -252,7 +276,17 @@ export function useSales() {
   return useQuery({
     queryKey: ['sales'],
     queryFn: async (): Promise<Sale[]> => {
-      const { data, error } = await withTimeout(
+      const rows = await safeFetch<{
+        id: string;
+        seller_id: string;
+        lead_id: string | null;
+        course_id: string;
+        amount: number | string;
+        payment_method: Sale['paymentMethod'];
+        installments: number;
+        sold_at: string;
+      }>(
+        'sales',
         sb()
           .from('sales')
           .select(
@@ -260,8 +294,7 @@ export function useSales() {
           )
           .order('sold_at', { ascending: false }),
       );
-      if (error) throw error;
-      return (data ?? []).map((r) => ({
+      return rows.map((r) => ({
         id: r.id,
         sellerId: r.seller_id,
         leadId: r.lead_id,
@@ -321,14 +354,19 @@ export function useTrafficSpend() {
   return useQuery({
     queryKey: ['traffic_spend'],
     queryFn: async (): Promise<TrafficSpend[]> => {
-      const { data, error } = await withTimeout(
+      const rows = await safeFetch<{
+        id: string;
+        spend_date: string;
+        channel: string;
+        amount: number | string;
+      }>(
+        'traffic_spend',
         sb()
           .from('traffic_spend')
           .select('id, spend_date, channel, amount')
           .order('spend_date', { ascending: false }),
       );
-      if (error) throw error;
-      return (data ?? []).map((r) => ({
+      return rows.map((r) => ({
         id: r.id,
         spendDate: r.spend_date,
         channel: r.channel,
@@ -341,14 +379,18 @@ export function useTrafficSpend() {
 export function useUpsertTrafficSpend() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (t: Partial<TrafficSpend> & { spendDate: string; channel: string; amount: number }) => {
+    mutationFn: async (
+      t: Partial<TrafficSpend> & { spendDate: string; channel: string; amount: number },
+    ) => {
       const payload = {
         id: t.id,
         spend_date: t.spendDate,
         channel: t.channel,
         amount: t.amount,
       };
-      const { error } = await sb().from('traffic_spend').upsert(payload, { onConflict: 'id' });
+      const { error } = await sb()
+        .from('traffic_spend')
+        .upsert(payload, { onConflict: 'id' });
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['traffic_spend'] }),
@@ -367,7 +409,7 @@ export function useDeleteTrafficSpend() {
 }
 
 // ============================================================================
-// Aggregate hook — passa todos os datasets pra páginas do dashboard
+// Dashboard aggregate
 // ============================================================================
 export function useDashboardDatasets() {
   const sellers = useSellers();
@@ -377,18 +419,10 @@ export function useDashboardDatasets() {
   const goals = useMonthlyGoals();
   const traffic = useTrafficSpend();
 
-  // Loading SOMENTE enquanto a query crítica (sellers) está em primeira carga.
-  // As outras 5 podem chegar depois sem travar a UI.
+  // Como safeFetch nunca rejeita, "isLoading" = true só na PRIMEIRA fetch.
+  // Quando resolve (mesmo com erro de rede), data vira [] e isLoading=false.
+  // Resultado: UI mostra empty state corretamente, sem travamento.
   const isLoading = sellers.isLoading && !sellers.data;
-
-  // Erro só importa se TODAS falharam (banco offline)
-  const allFailed =
-    sellers.error &&
-    courses.error &&
-    leads.error &&
-    sales.error &&
-    goals.error &&
-    traffic.error;
 
   return {
     sellers: sellers.data ?? [],
@@ -398,6 +432,6 @@ export function useDashboardDatasets() {
     goals: goals.data ?? [],
     traffic: traffic.data ?? [],
     isLoading,
-    error: allFailed ? sellers.error : null,
+    error: null as Error | null,
   };
 }
