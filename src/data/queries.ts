@@ -1,14 +1,25 @@
-import {
-  leads,
-  sales,
-  sellers,
-  monthlyGoals,
-  trafficSpend,
-  courses,
-  todayDate,
-} from './seed-data';
-import type { LeadStage, PaymentMethod, Sale } from '@/types/domain';
+/**
+ * Camada pura de cálculo de métricas / KPIs.
+ * Recebe datasets como parâmetro — agnóstica de origem (mock ou Supabase).
+ */
+import type {
+  Lead,
+  LeadStage,
+  MonthlyGoal,
+  PaymentMethod,
+  Sale,
+  Seller,
+  TrafficSpend,
+} from '@/types/domain';
 import { businessDaysElapsed, businessDaysInMonth } from '@/lib/utils';
+
+export interface Datasets {
+  sellers: Seller[];
+  leads: Lead[];
+  sales: Sale[];
+  goals: MonthlyGoal[];
+  traffic: TrafficSpend[];
+}
 
 export interface PeriodFilter {
   year: number;
@@ -26,25 +37,22 @@ function filterSeller<T extends { sellerId: string }>(arr: T[], sellerId?: strin
   return arr.filter((x) => x.sellerId === sellerId);
 }
 
-export function getSellers() {
-  return sellers;
-}
-
-export function getCourses() {
-  return courses;
-}
-
-export function getGoalsForMonth(year: number, month: number) {
+export function getGoalsForMonth(ds: Datasets, year: number, month: number) {
   const ym = new Date(year, month, 1).toISOString().slice(0, 10);
-  return monthlyGoals.filter((g) => g.yearMonth === ym);
+  return ds.goals.filter((g) => g.yearMonth === ym);
 }
 
-export function getGoalForSeller(year: number, month: number, sellerId: string) {
-  return getGoalsForMonth(year, month).find((g) => g.sellerId === sellerId);
+export function getGoalForSeller(
+  ds: Datasets,
+  year: number,
+  month: number,
+  sellerId: string,
+) {
+  return getGoalsForMonth(ds, year, month).find((g) => g.sellerId === sellerId);
 }
 
-export function getConsolidatedGoal(filter: PeriodFilter) {
-  const goals = getGoalsForMonth(filter.year, filter.month);
+export function getConsolidatedGoal(ds: Datasets, filter: PeriodFilter) {
+  const goals = getGoalsForMonth(ds, filter.year, filter.month);
   if (filter.sellerId && filter.sellerId !== 'all') {
     const g = goals.find((x) => x.sellerId === filter.sellerId);
     return {
@@ -60,26 +68,26 @@ export function getConsolidatedGoal(filter: PeriodFilter) {
   };
 }
 
-export function getMonthSales(filter: PeriodFilter): Sale[] {
+export function getMonthSales(ds: Datasets, filter: PeriodFilter): Sale[] {
   return filterSeller(
-    sales.filter((s) => inMonth(s.soldAt, filter.year, filter.month)),
+    ds.sales.filter((s) => inMonth(s.soldAt, filter.year, filter.month)),
     filter.sellerId,
   );
 }
 
-export function getMonthLeads(filter: PeriodFilter) {
+export function getMonthLeads(ds: Datasets, filter: PeriodFilter): Lead[] {
   return filterSeller(
-    leads.filter((l) => inMonth(l.createdAt, filter.year, filter.month)),
+    ds.leads.filter((l) => inMonth(l.createdAt, filter.year, filter.month)),
     filter.sellerId,
   );
 }
 
-export function getStageCount(filter: PeriodFilter, stage: LeadStage) {
-  return getMonthLeads(filter).filter((l) => l.stage === stage).length;
+export function getStageCount(ds: Datasets, filter: PeriodFilter, stage: LeadStage) {
+  return getMonthLeads(ds, filter).filter((l) => l.stage === stage).length;
 }
 
-export function getFunnelMetrics(filter: PeriodFilter) {
-  const monthLeads = getMonthLeads(filter);
+export function getFunnelMetrics(ds: Datasets, filter: PeriodFilter) {
+  const monthLeads = getMonthLeads(ds, filter);
   const total = monthLeads.length;
   const mqls = monthLeads.filter((l) =>
     ['MQL', 'SQL', 'AGENDADA', 'REALIZADA', 'NO_SHOW', 'VENDA', 'PERDA'].includes(l.stage),
@@ -98,8 +106,8 @@ export function getFunnelMetrics(filter: PeriodFilter) {
   return { total, mqls, sqls, agendadas, realizadas, noShows, vendas };
 }
 
-export function getDailyRevenue(filter: PeriodFilter) {
-  const monthSales = getMonthSales(filter);
+export function getDailyRevenue(ds: Datasets, filter: PeriodFilter) {
+  const monthSales = getMonthSales(ds, filter);
   const daysInMonth = new Date(filter.year, filter.month + 1, 0).getDate();
   const byDay: Record<number, number> = {};
   for (const s of monthSales) {
@@ -112,17 +120,21 @@ export function getDailyRevenue(filter: PeriodFilter) {
   });
 }
 
-export function getAccumulatedVsGoal(filter: PeriodFilter) {
-  const daily = getDailyRevenue(filter);
-  const { revenueGoal } = getConsolidatedGoal(filter);
+export function getAccumulatedVsGoal(
+  ds: Datasets,
+  filter: PeriodFilter,
+  today: Date = new Date(),
+) {
+  const daily = getDailyRevenue(ds, filter);
+  const { revenueGoal } = getConsolidatedGoal(ds, filter);
   const daysInMonth = daily.length;
   const businessDays = businessDaysInMonth(filter.year, filter.month);
-  const dailyGoal = revenueGoal / businessDays;
+  const dailyGoal = businessDays > 0 ? revenueGoal / businessDays : 0;
   let cumulative = 0;
   let cumulativeGoal = 0;
   const todayDay =
-    filter.year === todayDate.getFullYear() && filter.month === todayDate.getMonth()
-      ? todayDate.getDate()
+    filter.year === today.getFullYear() && filter.month === today.getMonth()
+      ? today.getDate()
       : daysInMonth;
 
   return Array.from({ length: daysInMonth }, (_, i) => {
@@ -140,16 +152,16 @@ export function getAccumulatedVsGoal(filter: PeriodFilter) {
   });
 }
 
-export function getRevenueSum(filter: PeriodFilter) {
-  return getMonthSales(filter).reduce((a, s) => a + s.amount, 0);
+export function getRevenueSum(ds: Datasets, filter: PeriodFilter) {
+  return getMonthSales(ds, filter).reduce((a, s) => a + s.amount, 0);
 }
 
-export function getCoursesSold(filter: PeriodFilter) {
-  return getMonthSales(filter).length;
+export function getCoursesSold(ds: Datasets, filter: PeriodFilter) {
+  return getMonthSales(ds, filter).length;
 }
 
-export function getPaymentMethodBreakdown(filter: PeriodFilter) {
-  const monthSales = getMonthSales(filter);
+export function getPaymentMethodBreakdown(ds: Datasets, filter: PeriodFilter) {
+  const monthSales = getMonthSales(ds, filter);
   const methods: PaymentMethod[] = [
     'AVISTA',
     'CARTAO_PARCELADO',
@@ -170,14 +182,14 @@ export function getPaymentMethodBreakdown(filter: PeriodFilter) {
   });
 }
 
-export function getSellerCards(filter: PeriodFilter) {
-  return sellers.map((seller) => {
-    const goal = getGoalForSeller(filter.year, filter.month, seller.id);
-    const sellerSales = sales.filter(
+export function getSellerCards(ds: Datasets, filter: PeriodFilter) {
+  return ds.sellers.map((seller) => {
+    const goal = getGoalForSeller(ds, filter.year, filter.month, seller.id);
+    const sellerSales = ds.sales.filter(
       (s) => s.sellerId === seller.id && inMonth(s.soldAt, filter.year, filter.month),
     );
     const revenue = sellerSales.reduce((a, s) => a + s.amount, 0);
-    const sellerLeads = leads.filter(
+    const sellerLeads = ds.leads.filter(
       (l) => l.sellerId === seller.id && inMonth(l.createdAt, filter.year, filter.month),
     );
     const vendas = sellerLeads.filter((l) => l.stage === 'VENDA').length;
@@ -211,18 +223,18 @@ export function getSellerCards(filter: PeriodFilter) {
   });
 }
 
-export function getMonthTrafficSpend(filter: PeriodFilter) {
-  return trafficSpend.filter((t) =>
+export function getMonthTrafficSpend(ds: Datasets, filter: PeriodFilter) {
+  return ds.traffic.filter((t) =>
     inMonth(new Date(t.spendDate).toISOString(), filter.year, filter.month),
   );
 }
 
-export function getMarketingMetrics(filter: PeriodFilter) {
-  const monthSpend = getMonthTrafficSpend(filter);
+export function getMarketingMetrics(ds: Datasets, filter: PeriodFilter) {
+  const monthSpend = getMonthTrafficSpend(ds, filter);
   const investment = monthSpend.reduce((a, t) => a + t.amount, 0);
-  const monthSales = getMonthSales({ ...filter, sellerId: 'all' });
+  const monthSales = getMonthSales(ds, { ...filter, sellerId: 'all' });
   const revenue = monthSales.reduce((a, s) => a + s.amount, 0);
-  const monthLeads = getMonthLeads({ ...filter, sellerId: 'all' });
+  const monthLeads = getMonthLeads(ds, { ...filter, sellerId: 'all' });
   const totalLeads = monthLeads.length;
   const mqls = monthLeads.filter((l) =>
     ['MQL', 'SQL', 'AGENDADA', 'REALIZADA', 'NO_SHOW', 'VENDA', 'PERDA'].includes(l.stage),
@@ -243,8 +255,8 @@ export function getMarketingMetrics(filter: PeriodFilter) {
   };
 }
 
-export function getSpendByDay(filter: PeriodFilter) {
-  const monthSpend = getMonthTrafficSpend(filter);
+export function getSpendByDay(ds: Datasets, filter: PeriodFilter) {
+  const monthSpend = getMonthTrafficSpend(ds, filter);
   const daysInMonth = new Date(filter.year, filter.month + 1, 0).getDate();
   const byDay: Record<number, number> = {};
   for (const t of monthSpend) {
@@ -258,17 +270,36 @@ export function getSpendByDay(filter: PeriodFilter) {
   }));
 }
 
-export function getProjection(filter: PeriodFilter) {
-  const revenue = getRevenueSum(filter);
-  const elapsed = businessDaysElapsed(filter.year, filter.month, todayDate);
+export function getProjection(ds: Datasets, filter: PeriodFilter, today: Date = new Date()) {
+  const revenue = getRevenueSum(ds, filter);
+  const elapsed = businessDaysElapsed(filter.year, filter.month, today);
   const total = businessDaysInMonth(filter.year, filter.month);
   if (!elapsed) return 0;
   return (revenue / elapsed) * total;
 }
 
-export function getAccumulatedGoalToToday(filter: PeriodFilter) {
-  const { revenueGoal } = getConsolidatedGoal(filter);
+export function getAccumulatedGoalToToday(
+  ds: Datasets,
+  filter: PeriodFilter,
+  today: Date = new Date(),
+) {
+  const { revenueGoal } = getConsolidatedGoal(ds, filter);
   const businessDays = businessDaysInMonth(filter.year, filter.month);
-  const elapsed = businessDaysElapsed(filter.year, filter.month, todayDate);
-  return (revenueGoal / businessDays) * elapsed;
+  const elapsed = businessDaysElapsed(filter.year, filter.month, today);
+  return businessDays > 0 ? (revenueGoal / businessDays) * elapsed : 0;
+}
+
+export function getDailyLeads(ds: Datasets, filter: PeriodFilter) {
+  const monthLeads = getMonthLeads(ds, filter);
+  const daysInMonth = new Date(filter.year, filter.month + 1, 0).getDate();
+  const byDay: Record<number, number> = {};
+  for (const l of monthLeads) {
+    const day = new Date(l.createdAt).getDate();
+    byDay[day] = (byDay[day] ?? 0) + 1;
+  }
+  return Array.from({ length: daysInMonth }, (_, i) => ({
+    day: i + 1,
+    label: (i + 1).toString().padStart(2, '0'),
+    leads: byDay[i + 1] ?? 0,
+  }));
 }

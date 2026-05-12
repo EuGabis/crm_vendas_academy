@@ -1,5 +1,6 @@
 import { create } from 'zustand';
-import { todayDate } from '@/data/seed-data';
+
+const NOW = new Date();
 
 export interface FiltersState {
   year: number;
@@ -10,8 +11,8 @@ export interface FiltersState {
 }
 
 export const useFilters = create<FiltersState>((set) => ({
-  year: todayDate.getFullYear(),
-  month: todayDate.getMonth(),
+  year: NOW.getFullYear(),
+  month: NOW.getMonth(),
   sellerId: 'all',
   setMonth: (year, month) => set({ year, month }),
   setSeller: (sellerId) => set({ sellerId }),

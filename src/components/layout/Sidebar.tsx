@@ -16,9 +16,15 @@ import {
   Building2,
   ChevronsLeft,
   ChevronsRight,
+  ShieldCheck,
+  UserPlus,
+  BookOpen,
+  Receipt,
+  ShoppingBag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
+import { useAuth } from '@/lib/auth';
 
 type LeafItem = {
   type: 'leaf';
@@ -33,6 +39,7 @@ type GroupItem = {
   icon: React.ComponentType<{ className?: string }>;
   defaultOpen?: boolean;
   comingSoon?: boolean;
+  adminOnly?: boolean;
   children: { to: string; label: string; icon: React.ComponentType<{ className?: string }> }[];
 };
 
@@ -46,8 +53,8 @@ const NAV: NavItem[] = [
     icon: TrendingUp,
     defaultOpen: true,
     children: [
-      { to: '/vendas/funil', label: 'Funil de Vendas', icon: TrendingUp },
       { to: '/vendas/dashboard-times', label: 'Dashboard Times', icon: Users },
+      { to: '/vendas/funil', label: 'Funil de Vendas', icon: TrendingUp },
       { to: '/vendas/metas-times', label: 'Metas de Times', icon: Target },
       { to: '/vendas/ranking', label: 'Ranking Vendedores', icon: Trophy },
       { to: '/vendas/bonus', label: 'Bônus Comercial', icon: Gift },
@@ -58,9 +65,7 @@ const NAV: NavItem[] = [
     type: 'group',
     label: 'Marketing',
     icon: Megaphone,
-    children: [
-      { to: '/marketing/trafego', label: 'Tráfego e CAC', icon: TrendingUp },
-    ],
+    children: [{ to: '/marketing/trafego', label: 'Tráfego e CAC', icon: TrendingUp }],
   },
   {
     type: 'group',
@@ -68,12 +73,21 @@ const NAV: NavItem[] = [
     icon: Headphones,
     children: [{ to: '/cs/overview', label: 'Overview', icon: LayoutGrid }],
   },
+  { type: 'group', label: 'Produto', icon: Package, comingSoon: true, children: [] },
   {
     type: 'group',
-    label: 'Produto',
-    icon: Package,
-    comingSoon: true,
-    children: [],
+    label: 'Administração',
+    icon: ShieldCheck,
+    adminOnly: true,
+    children: [
+      { to: '/admin/vendedores', label: 'Vendedores', icon: Users },
+      { to: '/admin/cursos', label: 'Cursos', icon: BookOpen },
+      { to: '/admin/vendas', label: 'Registrar Vendas', icon: Receipt },
+      { to: '/admin/leads', label: 'Leads', icon: ShoppingBag },
+      { to: '/admin/metas', label: 'Metas Mensais', icon: Target },
+      { to: '/admin/trafego', label: 'Gastos Tráfego', icon: Megaphone },
+      { to: '/admin/usuarios', label: 'Usuários', icon: UserPlus },
+    ],
   },
   {
     type: 'group',
@@ -87,6 +101,13 @@ const NAV: NavItem[] = [
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
+  const { isAdmin } = useAuth();
+
+  const visibleNav = NAV.filter((item) => {
+    if (item.type === 'group' && item.adminOnly && !isAdmin) return false;
+    return true;
+  });
+
   const [open, setOpen] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
     for (const item of NAV) {
@@ -105,7 +126,6 @@ export function Sidebar() {
         collapsed ? 'w-[72px]' : 'w-64',
       )}
     >
-      {/* Brand */}
       <div className="flex h-16 items-center justify-between gap-2 px-4 border-b border-zinc-900/80">
         <div className="flex items-center gap-2 overflow-hidden">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-gradient text-white text-sm font-black tracking-tight shadow-glow">
@@ -129,9 +149,8 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
-        {NAV.map((item) =>
+        {visibleNav.map((item) =>
           item.type === 'leaf' ? (
             <NavLink
               key={item.to}
@@ -164,6 +183,11 @@ export function Sidebar() {
                 {!collapsed && (
                   <span className="flex items-center gap-2">
                     {item.comingSoon && <Badge variant="muted">Em breve</Badge>}
+                    {item.adminOnly && !item.comingSoon && (
+                      <Badge variant="default" className="text-[9px]">
+                        admin
+                      </Badge>
+                    )}
                     {!item.comingSoon && (
                       <ChevronDown
                         className={cn(
@@ -196,11 +220,10 @@ export function Sidebar() {
         )}
       </nav>
 
-      {/* Footer */}
       {!collapsed && (
         <div className="border-t border-zinc-900/80 p-4">
           <div className="rounded-xl bg-zinc-900/60 p-3 text-[11px] text-zinc-500">
-            v0.1.0 · {import.meta.env.VITE_DATA_SOURCE === 'supabase' ? 'Supabase' : 'Mock data'}
+            v0.2.0 · Supabase
           </div>
         </div>
       )}
