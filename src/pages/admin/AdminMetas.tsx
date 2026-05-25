@@ -95,7 +95,7 @@ export function AdminMetas() {
   return (
     <>
       <Header title="Metas Mensais" subtitle="Defina meta de receita e cursos por vendedor" />
-      <div className="p-8 space-y-6">
+      <div className="page">
         <Card>
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">

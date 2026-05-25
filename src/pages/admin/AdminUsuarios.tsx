@@ -165,7 +165,7 @@ export function AdminUsuarios() {
         title="Usuários"
         subtitle="Gerencie quem tem acesso à plataforma e suas permissões"
       />
-      <div className="p-8 space-y-6">
+      <div className="page">
         <div className="flex items-center justify-between">
           <p className="text-sm text-zinc-500">
             {profiles.length} usuário(s) com acesso

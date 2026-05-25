@@ -37,7 +37,7 @@ export function Ranking() {
   return (
     <>
       <Header title="Ranking de Vendedores" subtitle="Performance do mês — ordenado por receita" />
-      <div className="p-8 space-y-6">
+      <div className="page">
         {ds.isLoading ? (
           <LoadingState />
         ) : ds.error ? (

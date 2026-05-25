@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+import { useUI } from '@/store/ui';
 import {
   ChevronDown,
   LayoutGrid,
@@ -97,6 +98,12 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
   const { isAdmin } = useAuth();
+  const { mobileSidebarOpen, setMobileSidebarOpen } = useUI();
+
+  // Em mobile, sempre full-width (sem colapsar) e fecha ao navegar
+  useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [location.pathname, setMobileSidebarOpen]);
 
   const visibleNav = NAV.filter((item) => {
     if (item.type === 'group' && item.adminOnly && !isAdmin) return false;
@@ -115,12 +122,26 @@ export function Sidebar() {
   });
 
   return (
-    <aside
-      className={cn(
-        'fixed inset-y-0 left-0 z-30 flex flex-col border-r border-zinc-800/80 bg-zinc-950/85 backdrop-blur-xl transition-all duration-200',
-        collapsed ? 'w-[72px]' : 'w-64',
-      )}
-    >
+    <>
+      {/* Overlay clicável em mobile pra fechar */}
+      <div
+        onClick={() => setMobileSidebarOpen(false)}
+        className={cn(
+          'fixed inset-0 z-20 bg-black/60 backdrop-blur-sm transition-opacity lg:hidden',
+          mobileSidebarOpen ? 'opacity-100' : 'pointer-events-none opacity-0',
+        )}
+        aria-hidden="true"
+      />
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-30 flex flex-col border-r border-zinc-800/80 bg-zinc-950/95 backdrop-blur-xl transition-all duration-300 ease-out',
+          // largura: full em mobile, controlada por collapsed em desktop
+          'w-[280px] sm:w-72',
+          'lg:translate-x-0',
+          collapsed ? 'lg:w-[72px]' : 'lg:w-64',
+          mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full',
+        )}
+      >
       <div className="flex h-16 items-center justify-center gap-2 px-4 border-b border-zinc-900/80 relative">
         {collapsed ? (
           <img
@@ -134,7 +155,7 @@ export function Sidebar() {
         )}
         <button
           onClick={() => setCollapsed((v) => !v)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-900 transition-colors"
+          className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-zinc-500 hover:text-white hover:bg-zinc-900 transition-colors hidden lg:flex"
           aria-label="Recolher menu"
         >
           {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
@@ -219,6 +240,7 @@ export function Sidebar() {
           </div>
         </div>
       )}
-    </aside>
+      </aside>
+    </>
   );
 }

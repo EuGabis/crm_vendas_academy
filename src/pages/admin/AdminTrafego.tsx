@@ -102,7 +102,7 @@ export function AdminTrafego() {
         title="Gastos de Tráfego"
         subtitle="Registre o investimento diário em mídia paga"
       />
-      <div className="p-8 space-y-6">
+      <div className="page">
         <div className="flex items-center justify-between">
           <p className="text-sm text-zinc-500">{spend.length} registro(s)</p>
           <Button onClick={openCreate}>

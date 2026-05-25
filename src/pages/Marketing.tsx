@@ -69,7 +69,7 @@ export function Marketing() {
         title="Marketing — Tráfego e CAC"
         subtitle="Investimento, custo de aquisição e retorno do mês"
       />
-      <div className="p-8 space-y-6">
+      <div className="page">
         {ds.isLoading ? (
           <LoadingState />
         ) : ds.error ? (

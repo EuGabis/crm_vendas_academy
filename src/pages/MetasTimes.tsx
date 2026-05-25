@@ -28,7 +28,7 @@ export function MetasTimes() {
   return (
     <>
       <Header title="Metas de Times" subtitle="Visão consolidada das metas mensais" />
-      <div className="p-8 space-y-6">
+      <div className="page">
         {ds.isLoading ? (
           <LoadingState />
         ) : ds.error ? (

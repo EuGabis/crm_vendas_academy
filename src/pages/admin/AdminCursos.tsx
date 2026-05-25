@@ -69,7 +69,7 @@ export function AdminCursos() {
   return (
     <>
       <Header title="Cursos" subtitle="Catálogo de produtos vendidos pela academia" />
-      <div className="p-8 space-y-6">
+      <div className="page">
         <div className="flex items-center justify-between">
           <p className="text-sm text-zinc-500">{courses.length} curso(s)</p>
           <Button onClick={openCreate}>

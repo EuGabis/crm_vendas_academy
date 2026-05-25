@@ -119,7 +119,7 @@ export function AdminVendedores() {
         title="Vendedores"
         subtitle="Cadastre e gerencie os vendedores da equipe comercial"
       />
-      <div className="p-8 space-y-6">
+      <div className="page">
         <div className="flex items-center justify-between">
           <p className="text-sm text-zinc-500">{sellers.length} vendedor(es) cadastrado(s)</p>
           <Button onClick={openCreate}>

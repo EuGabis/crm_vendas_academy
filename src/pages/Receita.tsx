@@ -33,7 +33,7 @@ export function Receita() {
   return (
     <>
       <Header title="Receita" subtitle="Visão consolidada do mês" />
-      <div className="p-8 space-y-6">
+      <div className="page">
         {ds.isLoading ? (
           <LoadingState />
         ) : ds.error ? (

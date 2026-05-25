@@ -23,7 +23,7 @@ export function AvaliacaoClosers() {
         title="Avaliação de Closers"
         subtitle="Rubrica qualitativa por critérios de venda"
       />
-      <div className="p-8 space-y-6">
+      <div className="page">
         {isLoading ? (
           <LoadingState />
         ) : error ? (

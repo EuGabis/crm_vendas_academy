@@ -95,10 +95,36 @@ export function ConfiguracoesLayout() {
   return (
     <>
       <Header title="Configurações" subtitle="Personalize a plataforma para você e sua equipe" />
-      <div className="p-8">
+
+      {/* Mobile/tablet: tabs horizontais com scroll */}
+      <div className="lg:hidden border-b border-zinc-900/80 bg-zinc-950/50 sticky top-[57px] sm:top-[65px] z-10 backdrop-blur-xl">
+        <div className="overflow-x-auto scrollbar-hide">
+          <nav className="flex items-center gap-1 px-4 sm:px-6 py-2 w-max">
+            {visible.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  cn(
+                    'flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-colors',
+                    isActive
+                      ? 'bg-brand-500/15 text-brand-300 border border-brand-500/30'
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-900/60',
+                  )
+                }
+              >
+                <item.icon className="h-3.5 w-3.5" />
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+        </div>
+      </div>
+
+      <div className="p-4 sm:p-6 lg:p-8">
         <div className="flex gap-6 max-w-7xl mx-auto">
-          {/* Sub-sidebar */}
-          <aside className="w-64 shrink-0 sticky top-24 self-start">
+          {/* Sub-sidebar — só desktop */}
+          <aside className="w-64 shrink-0 sticky top-24 self-start hidden lg:block">
             <nav className="space-y-5">
               {(Object.entries(grouped) as [SubNavItem['group'], SubNavItem[]][]).map(
                 ([group, items]) =>

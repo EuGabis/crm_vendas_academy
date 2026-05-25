@@ -142,7 +142,7 @@ export function AdminLeads() {
   return (
     <>
       <Header title="Leads" subtitle="Registre e gerencie os leads que entram no funil" />
-      <div className="p-8 space-y-6">
+      <div className="page">
         <div className="flex items-center justify-between">
           <p className="text-sm text-zinc-500">{leads.length} lead(s)</p>
           <Button onClick={openCreate} disabled={sellers.length === 0}>

@@ -46,7 +46,7 @@ export function Bonus() {
   return (
     <>
       <Header title="Bônus Comercial" subtitle="Cálculo de bônus por atingimento de meta" />
-      <div className="p-8 space-y-6">
+      <div className="page">
         {ds.isLoading ? (
           <LoadingState />
         ) : ds.error ? (

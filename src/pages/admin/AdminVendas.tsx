@@ -141,7 +141,7 @@ export function AdminVendas() {
   return (
     <>
       <Header title="Registrar Vendas" subtitle="Histórico de vendas e cadastro manual" />
-      <div className="p-8 space-y-6">
+      <div className="page">
         <div className="flex items-center justify-between">
           <p className="text-sm text-zinc-500">{sales.length} venda(s) registrada(s)</p>
           <Button onClick={openCreate} disabled={!canRegister}>

@@ -74,7 +74,7 @@ export function FunilVendas() {
   return (
     <>
       <Header title="Funil de Vendas" subtitle="Conversão do funil comercial no mês" />
-      <div className="p-8 space-y-6">
+      <div className="page">
         {ds.isLoading ? (
           <LoadingState />
         ) : ds.error ? (
