@@ -190,6 +190,74 @@ export const ONBOARDING_DEFAULT_STEPS: { key: string; label: string }[] = [
   { key: 'first_checkin', label: 'Primeiro check-in (30 dias)' },
 ];
 
+// ============================================================================
+// Workspace
+// ============================================================================
+
+export type TaskPriority = 'baixa' | 'media' | 'alta' | 'urgente';
+export type TaskStatus = 'pending' | 'in_progress' | 'done' | 'cancelled';
+
+export type MaterialCategory =
+  | 'script'
+  | 'apresentacao'
+  | 'video'
+  | 'faq'
+  | 'objecao'
+  | 'politica'
+  | 'outros';
+
+export interface WorkspaceTask {
+  id: string;
+  title: string;
+  description: string | null;
+  assignedTo: string | null;
+  priority: TaskPriority;
+  status: TaskStatus;
+  dueDate: string | null;
+  relatedStudentId: string | null;
+  relatedLeadId: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  completedAt: string | null;
+}
+
+export interface WorkspaceMaterial {
+  id: string;
+  title: string;
+  description: string | null;
+  category: MaterialCategory;
+  url: string | null;
+  body: string | null;
+  tags: string[];
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const TASK_PRIORITY_LABELS: Record<TaskPriority, string> = {
+  baixa: 'Baixa',
+  media: 'Média',
+  alta: 'Alta',
+  urgente: 'Urgente',
+};
+
+export const TASK_STATUS_LABELS: Record<TaskStatus, string> = {
+  pending: 'A fazer',
+  in_progress: 'Em andamento',
+  done: 'Concluída',
+  cancelled: 'Cancelada',
+};
+
+export const MATERIAL_CATEGORY_LABELS: Record<MaterialCategory, string> = {
+  script: 'Script de venda',
+  apresentacao: 'Apresentação',
+  video: 'Vídeo',
+  faq: 'FAQ',
+  objecao: 'Quebra de objeção',
+  politica: 'Política',
+  outros: 'Outros',
+};
+
 export const STAGE_LABELS: Record<LeadStage, string> = {
   LEAD: 'Leads',
   MQL: 'MQLs',

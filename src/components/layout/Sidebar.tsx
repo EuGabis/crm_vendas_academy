@@ -97,7 +97,16 @@ const NAV: NavItem[] = [
     ],
   },
   { type: 'leaf', to: '/configuracoes/perfil', label: 'Configurações', icon: Settings },
-  { type: 'leaf', to: '/workspace', label: 'Workspace', icon: Building2 },
+  {
+    type: 'group',
+    label: 'Workspace',
+    icon: Building2,
+    children: [
+      { to: '/workspace', label: 'Meu Dia', icon: LayoutGrid },
+      { to: '/workspace/tarefas', label: 'Tarefas', icon: ClipboardCheck },
+      { to: '/workspace/materiais', label: 'Materiais', icon: Package },
+    ],
+  },
 ];
 
 export function Sidebar() {

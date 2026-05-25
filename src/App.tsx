@@ -11,7 +11,6 @@ import { Bonus } from '@/pages/Bonus';
 import { AvaliacaoClosers } from '@/pages/AvaliacaoClosers';
 import { Marketing } from '@/pages/Marketing';
 import { Receita } from '@/pages/Receita';
-import { Placeholder } from '@/pages/Placeholder';
 import { AdminVendedores } from '@/pages/admin/AdminVendedores';
 import { AdminCursos } from '@/pages/admin/AdminCursos';
 import { AdminVendas } from '@/pages/admin/AdminVendas';
@@ -25,6 +24,9 @@ import { CSAlunoDetalhe } from '@/pages/cs/AlunoDetalhe';
 import { CSTicketsPage } from '@/pages/cs/Tickets';
 import { CSRenovacoesPage } from '@/pages/cs/Renovacoes';
 import { CSNPSPage } from '@/pages/cs/NPS';
+import { WorkspaceMeuDia } from '@/pages/workspace/MeuDia';
+import { WorkspaceTarefas } from '@/pages/workspace/Tarefas';
+import { WorkspaceMateriais } from '@/pages/workspace/Materiais';
 import { ConfigPerfil } from '@/pages/configuracoes/Perfil';
 import { ConfigSeguranca } from '@/pages/configuracoes/Seguranca';
 import { ConfigAparencia } from '@/pages/configuracoes/Aparencia';
@@ -59,10 +61,9 @@ export default function App() {
         <Route path="/cs/tickets" element={<CSTicketsPage />} />
         <Route path="/cs/renovacoes" element={<CSRenovacoesPage />} />
         <Route path="/cs/nps" element={<CSNPSPage />} />
-        <Route
-          path="/workspace"
-          element={<Placeholder title="Workspace" description="Em construção" />}
-        />
+        <Route path="/workspace" element={<WorkspaceMeuDia />} />
+        <Route path="/workspace/tarefas" element={<WorkspaceTarefas />} />
+        <Route path="/workspace/materiais" element={<WorkspaceMateriais />} />
 
         {/* Configurações (sub-rotas com layout próprio) */}
         <Route path="/configuracoes" element={<ConfiguracoesLayout />}>
