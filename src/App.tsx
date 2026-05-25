@@ -19,6 +19,12 @@ import { AdminLeads } from '@/pages/admin/AdminLeads';
 import { AdminMetas } from '@/pages/admin/AdminMetas';
 import { AdminTrafego } from '@/pages/admin/AdminTrafego';
 import { AdminUsuarios } from '@/pages/admin/AdminUsuarios';
+import { CSDashboardPage } from '@/pages/cs/CSDashboard';
+import { CSAlunos } from '@/pages/cs/Alunos';
+import { CSAlunoDetalhe } from '@/pages/cs/AlunoDetalhe';
+import { CSTicketsPage } from '@/pages/cs/Tickets';
+import { CSRenovacoesPage } from '@/pages/cs/Renovacoes';
+import { CSNPSPage } from '@/pages/cs/NPS';
 import { ConfigPerfil } from '@/pages/configuracoes/Perfil';
 import { ConfigSeguranca } from '@/pages/configuracoes/Seguranca';
 import { ConfigAparencia } from '@/pages/configuracoes/Aparencia';
@@ -47,10 +53,12 @@ export default function App() {
         <Route path="/vendas/bonus" element={<Bonus />} />
         <Route path="/vendas/avaliacao-closers" element={<AvaliacaoClosers />} />
         <Route path="/marketing/trafego" element={<Marketing />} />
-        <Route
-          path="/cs/overview"
-          element={<Placeholder title="Customer Success" description="Em construção" />}
-        />
+        <Route path="/cs/overview" element={<CSDashboardPage />} />
+        <Route path="/cs/alunos" element={<CSAlunos />} />
+        <Route path="/cs/alunos/:id" element={<CSAlunoDetalhe />} />
+        <Route path="/cs/tickets" element={<CSTicketsPage />} />
+        <Route path="/cs/renovacoes" element={<CSRenovacoesPage />} />
+        <Route path="/cs/nps" element={<CSNPSPage />} />
         <Route
           path="/workspace"
           element={<Placeholder title="Workspace" description="Em construção" />}

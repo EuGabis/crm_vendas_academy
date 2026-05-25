@@ -72,7 +72,13 @@ const NAV: NavItem[] = [
     type: 'group',
     label: 'CS',
     icon: Headphones,
-    children: [{ to: '/cs/overview', label: 'Overview', icon: LayoutGrid }],
+    children: [
+      { to: '/cs/overview', label: 'Dashboard', icon: LayoutGrid },
+      { to: '/cs/alunos', label: 'Alunos', icon: Users },
+      { to: '/cs/tickets', label: 'Tickets', icon: ClipboardCheck },
+      { to: '/cs/renovacoes', label: 'Renovações', icon: TrendingUp },
+      { to: '/cs/nps', label: 'NPS', icon: Trophy },
+    ],
   },
   { type: 'group', label: 'Produto', icon: Package, comingSoon: true, children: [] },
   {
