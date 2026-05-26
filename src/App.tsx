@@ -1,39 +1,97 @@
+import { lazy } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { ProtectedRoute } from '@/components/layout/ProtectedRoute';
 import { ConfiguracoesLayout } from '@/components/layout/ConfiguracoesLayout';
 import { Login } from '@/pages/Login';
-import { FunilVendas } from '@/pages/FunilVendas';
-import { DashboardTimes } from '@/pages/DashboardTimes';
-import { MetasTimes } from '@/pages/MetasTimes';
-import { Ranking } from '@/pages/Ranking';
-import { Bonus } from '@/pages/Bonus';
-import { AvaliacaoClosers } from '@/pages/AvaliacaoClosers';
-import { Marketing } from '@/pages/Marketing';
-import { Receita } from '@/pages/Receita';
-import { AdminVendedores } from '@/pages/admin/AdminVendedores';
-import { AdminCursos } from '@/pages/admin/AdminCursos';
-import { AdminVendas } from '@/pages/admin/AdminVendas';
-import { AdminLeads } from '@/pages/admin/AdminLeads';
-import { AdminMetas } from '@/pages/admin/AdminMetas';
-import { AdminTrafego } from '@/pages/admin/AdminTrafego';
-import { AdminUsuarios } from '@/pages/admin/AdminUsuarios';
-import { CSDashboardPage } from '@/pages/cs/CSDashboard';
-import { CSAlunos } from '@/pages/cs/Alunos';
-import { CSAlunoDetalhe } from '@/pages/cs/AlunoDetalhe';
-import { CSTicketsPage } from '@/pages/cs/Tickets';
-import { CSRenovacoesPage } from '@/pages/cs/Renovacoes';
-import { CSNPSPage } from '@/pages/cs/NPS';
-import { WorkspaceMeuDia } from '@/pages/workspace/MeuDia';
-import { WorkspaceTarefas } from '@/pages/workspace/Tarefas';
-import { WorkspaceMateriais } from '@/pages/workspace/Materiais';
-import { ConfigPerfil } from '@/pages/configuracoes/Perfil';
-import { ConfigSeguranca } from '@/pages/configuracoes/Seguranca';
-import { ConfigAparencia } from '@/pages/configuracoes/Aparencia';
-import { ConfigNotificacoes } from '@/pages/configuracoes/Notificacoes';
-import { ConfigEmpresa } from '@/pages/configuracoes/Empresa';
-import { ConfigDados } from '@/pages/configuracoes/Dados';
-import { ConfigSobre } from '@/pages/configuracoes/Sobre';
+
+// Páginas carregadas sob demanda (code-splitting por rota). Os componentes são
+// named exports, então mapeamos para `default` no import dinâmico.
+const FunilVendas = lazy(() =>
+  import('@/pages/FunilVendas').then((m) => ({ default: m.FunilVendas })),
+);
+const DashboardTimes = lazy(() =>
+  import('@/pages/DashboardTimes').then((m) => ({ default: m.DashboardTimes })),
+);
+const MetasTimes = lazy(() =>
+  import('@/pages/MetasTimes').then((m) => ({ default: m.MetasTimes })),
+);
+const Ranking = lazy(() => import('@/pages/Ranking').then((m) => ({ default: m.Ranking })));
+const Bonus = lazy(() => import('@/pages/Bonus').then((m) => ({ default: m.Bonus })));
+const AvaliacaoClosers = lazy(() =>
+  import('@/pages/AvaliacaoClosers').then((m) => ({ default: m.AvaliacaoClosers })),
+);
+const Marketing = lazy(() =>
+  import('@/pages/Marketing').then((m) => ({ default: m.Marketing })),
+);
+const Receita = lazy(() => import('@/pages/Receita').then((m) => ({ default: m.Receita })));
+const AdminVendedores = lazy(() =>
+  import('@/pages/admin/AdminVendedores').then((m) => ({ default: m.AdminVendedores })),
+);
+const AdminCursos = lazy(() =>
+  import('@/pages/admin/AdminCursos').then((m) => ({ default: m.AdminCursos })),
+);
+const AdminVendas = lazy(() =>
+  import('@/pages/admin/AdminVendas').then((m) => ({ default: m.AdminVendas })),
+);
+const AdminLeads = lazy(() =>
+  import('@/pages/admin/AdminLeads').then((m) => ({ default: m.AdminLeads })),
+);
+const AdminMetas = lazy(() =>
+  import('@/pages/admin/AdminMetas').then((m) => ({ default: m.AdminMetas })),
+);
+const AdminTrafego = lazy(() =>
+  import('@/pages/admin/AdminTrafego').then((m) => ({ default: m.AdminTrafego })),
+);
+const AdminUsuarios = lazy(() =>
+  import('@/pages/admin/AdminUsuarios').then((m) => ({ default: m.AdminUsuarios })),
+);
+const CSDashboardPage = lazy(() =>
+  import('@/pages/cs/CSDashboard').then((m) => ({ default: m.CSDashboardPage })),
+);
+const CSAlunos = lazy(() =>
+  import('@/pages/cs/Alunos').then((m) => ({ default: m.CSAlunos })),
+);
+const CSAlunoDetalhe = lazy(() =>
+  import('@/pages/cs/AlunoDetalhe').then((m) => ({ default: m.CSAlunoDetalhe })),
+);
+const CSTicketsPage = lazy(() =>
+  import('@/pages/cs/Tickets').then((m) => ({ default: m.CSTicketsPage })),
+);
+const CSRenovacoesPage = lazy(() =>
+  import('@/pages/cs/Renovacoes').then((m) => ({ default: m.CSRenovacoesPage })),
+);
+const CSNPSPage = lazy(() => import('@/pages/cs/NPS').then((m) => ({ default: m.CSNPSPage })));
+const WorkspaceMeuDia = lazy(() =>
+  import('@/pages/workspace/MeuDia').then((m) => ({ default: m.WorkspaceMeuDia })),
+);
+const WorkspaceTarefas = lazy(() =>
+  import('@/pages/workspace/Tarefas').then((m) => ({ default: m.WorkspaceTarefas })),
+);
+const WorkspaceMateriais = lazy(() =>
+  import('@/pages/workspace/Materiais').then((m) => ({ default: m.WorkspaceMateriais })),
+);
+const ConfigPerfil = lazy(() =>
+  import('@/pages/configuracoes/Perfil').then((m) => ({ default: m.ConfigPerfil })),
+);
+const ConfigSeguranca = lazy(() =>
+  import('@/pages/configuracoes/Seguranca').then((m) => ({ default: m.ConfigSeguranca })),
+);
+const ConfigAparencia = lazy(() =>
+  import('@/pages/configuracoes/Aparencia').then((m) => ({ default: m.ConfigAparencia })),
+);
+const ConfigNotificacoes = lazy(() =>
+  import('@/pages/configuracoes/Notificacoes').then((m) => ({ default: m.ConfigNotificacoes })),
+);
+const ConfigEmpresa = lazy(() =>
+  import('@/pages/configuracoes/Empresa').then((m) => ({ default: m.ConfigEmpresa })),
+);
+const ConfigDados = lazy(() =>
+  import('@/pages/configuracoes/Dados').then((m) => ({ default: m.ConfigDados })),
+);
+const ConfigSobre = lazy(() =>
+  import('@/pages/configuracoes/Sobre').then((m) => ({ default: m.ConfigSobre })),
+);
 
 export default function App() {
   return (
