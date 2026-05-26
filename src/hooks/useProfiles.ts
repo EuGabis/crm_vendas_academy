@@ -12,16 +12,10 @@ export interface ProfileRow {
 export function useProfiles() {
   return useQuery({
     queryKey: ['profiles'],
-    queryFn: async (): Promise<ProfileRow[]> => {
-      try {
-        return await restGet<ProfileRow[]>(
-          'profiles?select=id,role,seller_id,created_at&order=created_at.desc',
-        );
-      } catch (err) {
-        console.warn('[REST] profiles falhou:', (err as Error).message);
-        return [];
-      }
-    },
+    queryFn: async (): Promise<ProfileRow[]> =>
+      restGet<ProfileRow[]>(
+        'profiles?select=id,role,seller_id,created_at&order=created_at.desc',
+      ),
   });
 }
 

@@ -23,7 +23,7 @@ async function safe<T>(label: string, p: PromiseLike<T[]>): Promise<T[]> {
     return rows;
   } catch (err) {
     console.warn(`[REST] ${label} falhou:`, (err as Error).message);
-    return [];
+    throw new Error(`Não foi possível carregar ${label} (${(err as Error).message})`);
   } finally {
     clearTimeout(timer);
   }

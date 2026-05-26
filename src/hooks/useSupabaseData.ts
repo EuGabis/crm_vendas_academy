@@ -12,10 +12,11 @@ import type {
 const QUERY_TIMEOUT_MS = 15000;
 
 /**
- * Fetch com timeout via AbortSignal. Se a query falhar/expirar,
- * retorna [] em vez de levantar erro — UI nunca trava.
+ * Fetch com timeout via AbortSignal. Em caso de falha/timeout, lança o erro
+ * para que o React Query exponha `isError`/`error` — a UI reage com ErrorState
+ * + retry em vez de mascarar a falha como lista vazia.
  */
-async function safeGet<T>(label: string, path: string): Promise<T[]> {
+async function fetchRows<T>(label: string, path: string): Promise<T[]> {
   const start = performance.now();
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), QUERY_TIMEOUT_MS);
@@ -26,8 +27,11 @@ async function safeGet<T>(label: string, path: string): Promise<T[]> {
     return rows;
   } catch (err) {
     const ms = Math.round(performance.now() - start);
-    console.warn(`[REST] ${label} falhou em ${ms}ms:`, (err as Error).message);
-    return [];
+    const reason = ctrl.signal.aborted
+      ? `tempo limite de ${QUERY_TIMEOUT_MS / 1000}s excedido`
+      : (err as Error).message;
+    console.warn(`[REST] ${label} falhou em ${ms}ms: ${reason}`);
+    throw new Error(`Não foi possível carregar ${label} (${reason})`);
   } finally {
     clearTimeout(timer);
   }
@@ -49,7 +53,7 @@ export function useSellers() {
   return useQuery({
     queryKey: ['sellers'],
     queryFn: async (): Promise<Seller[]> => {
-      const rows = await safeGet<SellerRow>(
+      const rows = await fetchRows<SellerRow>(
         'sellers',
         'sellers?select=id,full_name,email,team,avatar_color,active&order=full_name.asc',
       );
@@ -102,7 +106,7 @@ export function useCourses() {
   return useQuery({
     queryKey: ['courses'],
     queryFn: async (): Promise<Course[]> => {
-      const rows = await safeGet<CourseRow>(
+      const rows = await fetchRows<CourseRow>(
         'courses',
         'courses?select=id,name,price&order=name.asc',
       );
@@ -146,7 +150,7 @@ export function useMonthlyGoals() {
   return useQuery({
     queryKey: ['monthly_goals'],
     queryFn: async (): Promise<MonthlyGoal[]> => {
-      const rows = await safeGet<GoalRow>(
+      const rows = await fetchRows<GoalRow>(
         'monthly_goals',
         'monthly_goals?select=seller_id,year_month,revenue_goal,courses_goal,business_days',
       );
@@ -203,7 +207,7 @@ export function useLeads() {
   return useQuery({
     queryKey: ['leads'],
     queryFn: async (): Promise<Lead[]> => {
-      const rows = await safeGet<LeadRow>(
+      const rows = await fetchRows<LeadRow>(
         'leads',
         'leads?select=id,seller_id,source,stage,created_at,stage_changed_at&order=created_at.desc',
       );
@@ -263,7 +267,7 @@ export function useSales() {
   return useQuery({
     queryKey: ['sales'],
     queryFn: async (): Promise<Sale[]> => {
-      const rows = await safeGet<SaleRow>(
+      const rows = await fetchRows<SaleRow>(
         'sales',
         'sales?select=id,seller_id,lead_id,course_id,amount,payment_method,installments,sold_at&order=sold_at.desc',
       );
@@ -330,7 +334,7 @@ export function useTrafficSpend() {
   return useQuery({
     queryKey: ['traffic_spend'],
     queryFn: async (): Promise<TrafficSpend[]> => {
-      const rows = await safeGet<TrafficRow>(
+      const rows = await fetchRows<TrafficRow>(
         'traffic_spend',
         'traffic_spend?select=id,spend_date,channel,amount&order=spend_date.desc',
       );
@@ -377,7 +381,12 @@ export function useDashboardDatasets() {
   const goals = useMonthlyGoals();
   const traffic = useTrafficSpend();
 
-  const isLoading = sellers.isLoading && !sellers.data;
+  const queries = [sellers, courses, leads, sales, goals, traffic];
+  const isLoading = queries.some((q) => q.isLoading);
+  const error = (queries.find((q) => q.isError)?.error as Error | undefined) ?? null;
+  const refetch = () => {
+    queries.forEach((q) => void q.refetch());
+  };
 
   return {
     sellers: sellers.data ?? [],
@@ -387,6 +396,7 @@ export function useDashboardDatasets() {
     goals: goals.data ?? [],
     traffic: traffic.data ?? [],
     isLoading,
-    error: null as Error | null,
+    error,
+    refetch,
   };
 }
