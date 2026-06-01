@@ -8,6 +8,13 @@ Stack: **React 18 · Vite 6 · TypeScript · Tailwind · shadcn/ui · Recharts �
 
 ---
 
+## 📚 Documentação para testers
+
+- **[Guia Rápido (15 min)](docs/GUIA_RAPIDO.md)** — checklist enxuto pra começar a testar agora
+- **[Manual Completo](docs/MANUAL_DE_TESTE.md)** — todos os módulos, fluxos, permissões e troubleshooting
+
+---
+
 ## Setup local
 
 ```bash
