@@ -19,6 +19,7 @@ import {
   txDate,
   txProductName,
   txValue,
+  txPaymentLabel,
   type GuruContact,
 } from '@/types/guru';
 import { formatCurrency } from '@/lib/utils';
