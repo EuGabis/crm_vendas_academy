@@ -84,6 +84,14 @@ export function fetchContacts(params?: {
   return get<GuruListResponse<GuruContact>>('contacts', all);
 }
 
+export function fetchTransaction(id: string) {
+  return get<GuruTransaction>(`transactions/${encodeURIComponent(id)}`);
+}
+
+export function fetchSubscription(id: string) {
+  return get<GuruSubscription>(`subscriptions/${encodeURIComponent(id)}`);
+}
+
 // Helpers de período
 export function isoDate(d: Date) {
   return d.toISOString().slice(0, 10);

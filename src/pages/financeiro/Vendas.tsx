@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Search, Filter, Receipt } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/card';
@@ -12,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/empty-state';
 import { useGuruTransactions } from '@/hooks/useGuru';
 import { daysAgo, today } from '@/lib/guru';
@@ -24,9 +24,7 @@ import {
   txDate,
   txProductName,
   txValue,
-  txNetValue,
   txPaymentLabel,
-  type GuruTransaction,
   type NormalizedStatus,
 } from '@/types/guru';
 import { formatCurrency } from '@/lib/utils';
@@ -39,11 +37,11 @@ const PERIOD_OPTIONS = [
 ];
 
 export function FinanceiroVendas() {
+  const navigate = useNavigate();
   const [period, setPeriod] = useState(30);
   const [statusFilter, setStatusFilter] = useState<NormalizedStatus | 'all'>('all');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<GuruTransaction | null>(null);
 
   const { data, isLoading, error } = useGuruTransactions({
     ordered_at_ini: daysAgo(period),
@@ -78,7 +76,6 @@ export function FinanceiroVendas() {
     <>
       <Header title="Vendas" subtitle="Histórico de transações da Guru" />
       <div className="page">
-        {/* Filtros */}
         <Card className="!p-4">
           <div className="flex flex-wrap gap-3 items-center">
             <div className="relative flex-1 min-w-[240px]">
@@ -165,7 +162,7 @@ export function FinanceiroVendas() {
                     return (
                       <tr
                         key={t.id}
-                        onClick={() => setSelected(t)}
+                        onClick={() => navigate(`/financeiro/vendas/${t.id}`)}
                         className="hover:bg-zinc-900/40 cursor-pointer transition-colors"
                       >
                         <td className="px-4 py-3 text-zinc-400 tabular-nums text-xs">
@@ -198,7 +195,6 @@ export function FinanceiroVendas() {
           </Card>
         )}
 
-        {/* Paginação */}
         {meta.last_page && meta.last_page > 1 && (
           <div className="flex items-center justify-between">
             <span className="text-xs text-zinc-500">
@@ -226,94 +222,6 @@ export function FinanceiroVendas() {
           </div>
         )}
       </div>
-
-      {/* Detalhe */}
-      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent className="max-w-2xl">
-          {selected && (
-            <>
-              <DialogHeader>
-                <DialogTitle>Venda {selected.id.slice(0, 12)}...</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 max-h-[60vh] overflow-y-auto">
-                <div className="grid grid-cols-2 gap-3">
-                  <Info label="Status">
-                    <Badge variant={STATUS_VARIANT[normalizeStatus(txStatus(selected))]}>
-                      {STATUS_LABELS[normalizeStatus(txStatus(selected))]}
-                    </Badge>
-                  </Info>
-                  <Info label="Valor">
-                    <span className="text-lg font-bold text-emerald-400 tabular-nums">
-                      {formatCurrency(txValue(selected))}
-                    </span>
-                  </Info>
-                  <Info label="Valor líquido">
-                    {formatCurrency(txNetValue(selected))}
-                  </Info>
-                  <Info label="Pagamento">{txPaymentLabel(selected)}</Info>
-                  {selected.installments && (
-                    <Info label="Parcelas">{selected.installments}x</Info>
-                  )}
-                  <Info label="Data">
-                    {txDate(selected)
-                      ? new Date(txDate(selected)!).toLocaleString('pt-BR')
-                      : '—'}
-                  </Info>
-                </div>
-
-                <div className="border-t border-zinc-800 pt-4">
-                  <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-                    Cliente
-                  </h4>
-                  <div className="space-y-1.5 text-sm">
-                    <div className="text-zinc-100 font-medium">
-                      {selected.contact?.name ?? '—'}
-                    </div>
-                    <div className="text-zinc-400">{selected.contact?.email ?? ''}</div>
-                    {selected.contact?.phone_number && (
-                      <div className="text-zinc-400">📞 {selected.contact.phone_number}</div>
-                    )}
-                    {selected.contact?.doc && (
-                      <div className="text-zinc-500 text-xs">CPF/CNPJ: {selected.contact.doc}</div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="border-t border-zinc-800 pt-4">
-                  <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-                    Produto
-                  </h4>
-                  <div className="text-sm text-zinc-100">{txProductName(selected)}</div>
-                </div>
-
-                {selected.checkout_url && (
-                  <div className="border-t border-zinc-800 pt-4">
-                    <a
-                      href={selected.checkout_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-brand-400 hover:underline break-all"
-                    >
-                      🔗 Checkout: {selected.checkout_url}
-                    </a>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
     </>
-  );
-}
-
-function Info({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-1">
-        {label}
-      </p>
-      <div className="text-sm text-zinc-200">{children}</div>
-    </div>
   );
 }

@@ -3,6 +3,8 @@ import {
   fetchTransactions,
   fetchSubscriptions,
   fetchContacts,
+  fetchTransaction,
+  fetchSubscription,
   type GuruTransactionsParams,
 } from '@/lib/guru';
 
@@ -27,6 +29,26 @@ export function useGuruSubscriptions(params?: {
   return useQuery({
     queryKey: ['guru', 'subscriptions', params],
     queryFn: () => fetchSubscriptions(params),
+    staleTime: STALE_5M,
+    retry: 1,
+  });
+}
+
+export function useGuruTransaction(id: string | undefined) {
+  return useQuery({
+    queryKey: ['guru', 'transaction', id],
+    enabled: !!id,
+    queryFn: () => fetchTransaction(id!),
+    staleTime: STALE_5M,
+    retry: 1,
+  });
+}
+
+export function useGuruSubscription(id: string | undefined) {
+  return useQuery({
+    queryKey: ['guru', 'subscription', id],
+    enabled: !!id,
+    queryFn: () => fetchSubscription(id!),
     staleTime: STALE_5M,
     retry: 1,
   });

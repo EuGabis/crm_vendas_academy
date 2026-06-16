@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Repeat, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/card';
@@ -39,6 +40,7 @@ function statusVariant(s?: string): 'success' | 'warning' | 'danger' | 'muted' {
 }
 
 export function FinanceiroAssinaturas() {
+  const navigate = useNavigate();
   const [status, setStatus] = useState<string>('all');
   const [page, setPage] = useState(1);
 
@@ -111,7 +113,11 @@ export function FinanceiroAssinaturas() {
                 </thead>
                 <tbody className="divide-y divide-zinc-900">
                   {subs.map((s) => (
-                    <tr key={s.id} className="hover:bg-zinc-900/40 transition-colors">
+                    <tr
+                      key={s.id}
+                      onClick={() => navigate(`/financeiro/assinaturas/${s.id}`)}
+                      className="hover:bg-zinc-900/40 cursor-pointer transition-colors"
+                    >
                       <td className="px-4 py-3">
                         <div className="text-zinc-100">{s.contact?.name ?? '—'}</div>
                         <div className="text-[11px] text-zinc-500 truncate max-w-[200px]">
