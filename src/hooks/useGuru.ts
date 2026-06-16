@@ -26,7 +26,14 @@ export function useGuruSubscriptions(params?: { per_page?: number; page?: number
   });
 }
 
-export function useGuruContacts(params?: { per_page?: number; page?: number; search?: string }) {
+export function useGuruContacts(params?: {
+  per_page?: number;
+  page?: number;
+  search?: string;
+  name?: string;
+  email?: string;
+  doc?: string;
+}) {
   return useQuery({
     queryKey: ['guru', 'contacts', params],
     queryFn: () => fetchContacts(params),

@@ -13,6 +13,7 @@ import { useGuruContacts, useGuruTransactions } from '@/hooks/useGuru';
 import { daysAgo, today } from '@/lib/guru';
 import {
   normalizeStatus,
+  txStatus,
   STATUS_LABELS,
   STATUS_VARIANT,
   txDate,
@@ -157,7 +158,7 @@ function ContactDetail({
 
   const txs = txData?.data ?? [];
   const stats = useMemo(() => {
-    const paid = txs.filter((t) => normalizeStatus(t.status) === 'paid');
+    const paid = txs.filter((t) => normalizeStatus(txStatus(t)) === 'paid');
     const total = paid.reduce((a, t) => a + txValue(t), 0);
     return { count: paid.length, total };
   }, [txs]);
@@ -220,7 +221,7 @@ function ContactDetail({
                 ) : (
                   <div className="space-y-1.5">
                     {txs.map((t) => {
-                      const ns = normalizeStatus(t.status);
+                      const ns = normalizeStatus(txStatus(t));
                       const d = txDate(t)?.slice(0, 10);
                       return (
                         <div

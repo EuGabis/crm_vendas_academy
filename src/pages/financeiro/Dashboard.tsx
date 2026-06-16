@@ -28,6 +28,7 @@ import { useGuruTransactions } from '@/hooks/useGuru';
 import { today, daysAgo, startOfMonth } from '@/lib/guru';
 import {
   normalizeStatus,
+  txStatus,
   STATUS_LABELS,
   STATUS_VARIANT,
   txDate,
@@ -51,7 +52,7 @@ export function FinanceiroDashboard() {
     const todayStr = today();
     const monthStart = startOfMonth();
 
-    const onlyPaid = transactions.filter((t) => normalizeStatus(t.status) === 'paid');
+    const onlyPaid = transactions.filter((t) => normalizeStatus(txStatus(t)) === 'paid');
 
     const todayTxs = onlyPaid.filter((t) => {
       const d = txDate(t);
@@ -87,7 +88,7 @@ export function FinanceiroDashboard() {
     // Status breakdown
     const byStatus: Record<string, number> = {};
     for (const t of transactions) {
-      const s = normalizeStatus(t.status);
+      const s = normalizeStatus(txStatus(t));
       byStatus[s] = (byStatus[s] ?? 0) + 1;
     }
 
@@ -244,7 +245,7 @@ export function FinanceiroDashboard() {
                 ) : (
                   <div className="divide-y divide-zinc-900 max-h-72 overflow-y-auto">
                     {transactions.slice(0, 8).map((t) => {
-                      const ns = normalizeStatus(t.status);
+                      const ns = normalizeStatus(txStatus(t));
                       return (
                         <div
                           key={t.id}

@@ -134,11 +134,16 @@ const STATUS_MAP: Record<string, NormalizedStatus> = {
   paid: 'paid',
   approved: 'paid',
   confirmed: 'paid',
+  authorized: 'paid',
   pending: 'pending',
   waiting_payment: 'pending',
+  waiting: 'pending',
   processing: 'pending',
+  billet_printed: 'pending',
+  billet: 'pending',
   refused: 'refused',
   failed: 'refused',
+  not_authorized: 'refused',
   refunded: 'refunded',
   cancelled: 'cancelled',
   canceled: 'cancelled',
@@ -146,6 +151,15 @@ const STATUS_MAP: Record<string, NormalizedStatus> = {
   chargedback: 'chargedback',
   expired: 'expired',
 };
+
+/** Extrai status considerando que pode estar em payment.status, status, ou outros. */
+export function txStatus(tx: GuruTransaction): string | undefined {
+  const anyTx = tx as unknown as Record<string, unknown>;
+  if (typeof tx.status === 'string') return tx.status;
+  const payment = anyTx['payment'] as Record<string, unknown> | undefined;
+  if (payment && typeof payment['status'] === 'string') return payment['status'] as string;
+  return undefined;
+}
 
 export function normalizeStatus(s?: string): NormalizedStatus {
   if (!s) return 'unknown';
@@ -193,14 +207,47 @@ export function txNetValue(tx: GuruTransaction): number {
   return txValue(tx);
 }
 
+/** Extrai data de uma transaction. A Guru pode usar:
+ *   - string solta: tx.confirmed_at
+ *   - objeto: tx.dates.confirmed_at = "..." ou {value: "...", raw: "..."}
+ *   - timestamp epoch dentro de payment.dates
+ *   tenta todos.
+ */
 export function txDate(tx: GuruTransaction): string | null {
-  return (
-    tx.confirmed_at ??
-    tx.ordered_at ??
-    tx.created_at ??
-    tx.updated_at ??
-    null
-  );
+  const anyTx = tx as unknown as Record<string, unknown>;
+  // Plano
+  const flat = [
+    tx.confirmed_at,
+    tx.ordered_at,
+    tx.created_at,
+    tx.updated_at,
+    tx.cancelled_at,
+  ].find((v) => typeof v === 'string') as string | undefined;
+  if (flat) return flat;
+
+  // Aninhado em `dates`
+  const dates = anyTx['dates'] as Record<string, unknown> | undefined;
+  if (dates && typeof dates === 'object') {
+    const candidates = ['confirmed_at', 'ordered_at', 'created_at', 'updated_at'];
+    for (const k of candidates) {
+      const v = dates[k];
+      if (typeof v === 'string') return v;
+      if (v && typeof v === 'object' && 'value' in (v as object)) {
+        const val = (v as { value?: unknown }).value;
+        if (typeof val === 'string') return val;
+        if (typeof val === 'number') return new Date(val * 1000).toISOString();
+      }
+      // unix timestamp puro
+      if (typeof v === 'number') return new Date(v * 1000).toISOString();
+    }
+  }
+
+  // Fallback comum em APIs br: ordered/confirmed unix timestamp na raiz
+  for (const k of ['confirmed_at', 'ordered_at', 'created_at']) {
+    const v = anyTx[k];
+    if (typeof v === 'number') return new Date(v * 1000).toISOString();
+  }
+  return null;
 }
 
 export function txProductName(tx: GuruTransaction): string {

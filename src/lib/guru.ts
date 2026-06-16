@@ -53,11 +53,29 @@ export function fetchSubscriptions(params?: { per_page?: number; page?: number; 
   );
 }
 
-export function fetchContacts(params?: { per_page?: number; page?: number; search?: string }) {
-  return get<GuruListResponse<GuruContact>>(
-    'contacts',
-    params as Record<string, string | number | undefined> | undefined,
-  );
+export function fetchContacts(params?: {
+  per_page?: number;
+  page?: number;
+  search?: string;
+  name?: string;
+  email?: string;
+  doc?: string;
+}) {
+  // Se vier um "search" genérico, o backend tenta também como name/email/doc.
+  // Aqui passamos tudo direto.
+  const all: Record<string, string | number | undefined> = { ...params };
+  if (params?.search && !params.name && !params.email && !params.doc) {
+    // tenta inferir: se for número, doc; se tem @, email; senão name
+    const s = params.search.trim();
+    if (/^\d+$/.test(s.replace(/\D/g, '')) && s.replace(/\D/g, '').length >= 6) {
+      all.doc = s.replace(/\D/g, '');
+    } else if (s.includes('@')) {
+      all.email = s;
+    } else {
+      all.name = s;
+    }
+  }
+  return get<GuruListResponse<GuruContact>>('contacts', all);
 }
 
 // Helpers de período

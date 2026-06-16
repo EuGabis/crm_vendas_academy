@@ -18,6 +18,7 @@ import { useGuruTransactions } from '@/hooks/useGuru';
 import { daysAgo, today } from '@/lib/guru';
 import {
   normalizeStatus,
+  txStatus,
   STATUS_LABELS,
   STATUS_VARIANT,
   txDate,
@@ -57,7 +58,7 @@ export function FinanceiroVendas() {
   const filtered = useMemo(() => {
     let list = all;
     if (statusFilter !== 'all') {
-      list = list.filter((t) => normalizeStatus(t.status) === statusFilter);
+      list = list.filter((t) => normalizeStatus(txStatus(t)) === statusFilter);
     }
     if (search.trim()) {
       const q = search.toLowerCase().trim();
@@ -159,7 +160,7 @@ export function FinanceiroVendas() {
                 </thead>
                 <tbody className="divide-y divide-zinc-900">
                   {filtered.map((t) => {
-                    const ns = normalizeStatus(t.status);
+                    const ns = normalizeStatus(txStatus(t));
                     const d = txDate(t)?.slice(0, 10);
                     return (
                       <tr
@@ -237,8 +238,8 @@ export function FinanceiroVendas() {
               <div className="space-y-4 max-h-[60vh] overflow-y-auto">
                 <div className="grid grid-cols-2 gap-3">
                   <Info label="Status">
-                    <Badge variant={STATUS_VARIANT[normalizeStatus(selected.status)]}>
-                      {STATUS_LABELS[normalizeStatus(selected.status)]}
+                    <Badge variant={STATUS_VARIANT[normalizeStatus(txStatus(selected))]}>
+                      {STATUS_LABELS[normalizeStatus(txStatus(selected))]}
                     </Badge>
                   </Info>
                   <Info label="Valor">
