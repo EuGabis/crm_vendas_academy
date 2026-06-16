@@ -35,13 +35,19 @@ export function FinanceiroFaturaDetalhe() {
   const { data, isLoading, error } = useGuruInvoice(id, subId);
 
   const inv = data as Record<string, unknown> | undefined;
-  const code = (inv?.id ?? inv?.code ?? id ?? '') as string;
+  const code = (inv?.code ?? inv?.invoice_code ?? inv?.id ?? id ?? '') as string;
   const cycle = inv?.cycle ?? inv?.cycle_number;
   const value = Number(inv?.value ?? inv?.amount ?? 0);
+  const tax = Number(inv?.tax ?? inv?.imposto ?? 0);
+  const extra = Number(inv?.extra ?? inv?.acrescimo ?? inv?.increase ?? 0);
+  const discount = Number(inv?.discount ?? inv?.desconto ?? 0);
   const status = String(inv?.status ?? '—');
   const chargedAt = inv?.charged_at ?? inv?.paid_at ?? inv?.due_date ?? inv?.created_at;
   const dueDate = inv?.due_date;
   const paidAt = inv?.paid_at;
+  const cycleStart = inv?.cycle_start ?? inv?.start_at ?? inv?.start_date;
+  const cycleEnd = inv?.cycle_end ?? inv?.end_at ?? inv?.end_date;
+  const updatedAt = inv?.updated_at;
   const checkoutUrl = (inv?.checkout_url ?? inv?.payment_url ?? inv?.url) as string | undefined;
   const invoiceUrl = inv?.checkout_invoice_url as string | undefined;
   const method = (inv?.payment_method ?? inv?.method) as string | undefined;
@@ -91,16 +97,31 @@ export function FinanceiroFaturaDetalhe() {
                 {cycle != null && <KV label="Ciclo" value={String(cycle)} />}
                 {type && <KV label="Tipo" value={String(type)} />}
                 {method && <KV label="Forma de pagamento" value={String(method)} />}
-                <KV label="Valor" value={formatCurrency(value)} />
                 <KV label="Status" value={status} />
+              </div>
+            </Card>
+
+            <Card>
+              <h3 className="text-sm font-semibold text-white mb-3">Valores</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                <KV label="Valor" value={formatCurrency(value)} />
+                <KV label="Imposto" value={formatCurrency(tax)} />
+                <KV label="Acréscimo" value={formatCurrency(extra)} />
+                <KV label="Desconto" value={formatCurrency(discount)} />
               </div>
             </Card>
 
             <Card>
               <h3 className="text-sm font-semibold text-white mb-3">Datas</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                {cycleStart != null && (
+                  <KV label="Início do ciclo" value={fmtGuruDate(cycleStart)} />
+                )}
+                {cycleEnd != null && (
+                  <KV label="Fim do ciclo" value={fmtGuruDate(cycleEnd)} />
+                )}
                 <KV
-                  label="Cobrado em"
+                  label="Cobrada em"
                   value={fmtGuruDate(chargedAt, { withTime: true })}
                 />
                 {dueDate != null && (
@@ -116,6 +137,12 @@ export function FinanceiroFaturaDetalhe() {
                   <KV
                     label="Criada em"
                     value={fmtGuruDate(inv.created_at, { withTime: true })}
+                  />
+                )}
+                {updatedAt != null && (
+                  <KV
+                    label="Atualizada em"
+                    value={fmtGuruDate(updatedAt, { withTime: true })}
                   />
                 )}
               </div>

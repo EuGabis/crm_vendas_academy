@@ -202,7 +202,12 @@ export function FinanceiroAssinaturaDetalhe() {
                         </thead>
                         <tbody className="divide-y divide-zinc-900">
                           {invoices.map((inv) => {
-                            const code = String(inv.id ?? inv.code ?? '');
+                            const displayCode = String(
+                              inv.code ?? inv.invoice_code ?? inv.id ?? '',
+                            );
+                            const navCode = String(
+                              inv.code ?? inv.invoice_code ?? inv.id ?? '',
+                            );
                             const cycle = inv.cycle ?? inv.cycle_number ?? '—';
                             const charged =
                               inv.charged_at ??
@@ -213,14 +218,14 @@ export function FinanceiroAssinaturaDetalhe() {
                             const value = Number(inv.value ?? inv.amount ?? 0);
                             return (
                               <tr
-                                key={code}
+                                key={displayCode}
                                 onClick={() =>
-                                  navigate(`/financeiro/faturas/${code}?sub=${id}`)
+                                  navigate(`/financeiro/faturas/${navCode}?sub=${id}`)
                                 }
                                 className="hover:bg-zinc-900/40 cursor-pointer transition-colors"
                               >
                                 <td className="px-4 py-3 font-mono text-xs text-zinc-300 truncate max-w-[280px]">
-                                  {code}
+                                  {displayCode}
                                 </td>
                                 <td className="px-4 py-3 text-center text-zinc-400">
                                   {String(cycle)}
