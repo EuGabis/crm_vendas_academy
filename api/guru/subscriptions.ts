@@ -27,8 +27,8 @@ export default async function handler(req: RequestLike, res: ResponseLike) {
     if (getStr('contact_id')) params.set('contact_id', getStr('contact_id')!);
     if (getStr('product_id')) params.set('product_id', getStr('product_id')!);
 
-    // Subscriptions tambem pode exigir filtro de data; aplicar started_at_ini
-    const days = Number(getStr('days') ?? '365');
+    // Guru limita started_at a max 180 dias por janela
+    const days = Math.min(Number(getStr('days') ?? '180'), 180);
     if (!params.has('started_at_ini') && !params.has('contact_id')) {
       const end = new Date().toISOString().slice(0, 10);
       const start = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);

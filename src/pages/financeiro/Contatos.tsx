@@ -144,12 +144,12 @@ function ContactDetail({
   contact: GuruContact | null;
   onClose: () => void;
 }) {
-  // Quando abrir contato, puxa as transações dele (últimos 365 dias)
+  // Guru limita janela a 180 dias — usa esse máximo
   const { data: txData, isLoading } = useGuruTransactions(
     contact
       ? {
           contact_id: contact.id,
-          ordered_at_ini: daysAgo(365),
+          ordered_at_ini: daysAgo(180),
           ordered_at_end: today(),
           per_page: 50,
         }
@@ -211,36 +211,91 @@ function ContactDetail({
               </div>
 
               <div className="border-t border-zinc-800 pt-4">
-                <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-                  Histórico de compras (1 ano)
-                </h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                    Histórico de compras (180 dias)
+                  </h4>
+                  <Badge variant="muted" className="text-[9px]">
+                    {txs.length} transações
+                  </Badge>
+                </div>
                 {isLoading ? (
                   <p className="text-xs text-zinc-500">Carregando...</p>
                 ) : txs.length === 0 ? (
                   <p className="text-xs text-zinc-500">Nenhuma transação no período.</p>
                 ) : (
-                  <div className="space-y-1.5">
+                  <div className="space-y-2">
                     {txs.map((t) => {
                       const ns = normalizeStatus(txStatus(t));
-                      const d = txDate(t)?.slice(0, 10);
+                      const d = txDate(t);
                       return (
-                        <div
+                        <details
                           key={t.id}
-                          className="flex items-center justify-between gap-3 p-2 rounded-lg bg-zinc-900/50 text-xs"
+                          className="rounded-lg bg-zinc-900/50 text-xs border border-zinc-800/50 group"
                         >
-                          <div className="flex-1 min-w-0">
-                            <div className="text-zinc-200 truncate">{txProductName(t)}</div>
-                            <div className="text-zinc-500 tabular-nums">
-                              {d ? new Date(d).toLocaleDateString('pt-BR') : '—'}
+                          <summary className="flex items-center justify-between gap-3 p-3 cursor-pointer hover:bg-zinc-900/70 transition-colors list-none">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-zinc-100 font-medium truncate">
+                                {txProductName(t)}
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-zinc-500 tabular-nums">
+                                  {d ? new Date(d).toLocaleDateString('pt-BR') : '—'}
+                                </span>
+                                <Badge variant={STATUS_VARIANT[ns]} className="text-[9px]">
+                                  {STATUS_LABELS[ns]}
+                                </Badge>
+                              </div>
                             </div>
+                            <div className="text-emerald-400 font-bold tabular-nums shrink-0">
+                              {formatCurrency(txValue(t))}
+                            </div>
+                          </summary>
+                          <div className="border-t border-zinc-800/50 p-3 space-y-1.5 text-[11px]">
+                            <div className="flex justify-between">
+                              <span className="text-zinc-500">ID:</span>
+                              <code className="text-zinc-300">{t.id.slice(0, 14)}...</code>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-zinc-500">Pagamento:</span>
+                              <span className="text-zinc-300">{txPaymentLabel(t)}</span>
+                            </div>
+                            {t.installments && (
+                              <div className="flex justify-between">
+                                <span className="text-zinc-500">Parcelas:</span>
+                                <span className="text-zinc-300">{t.installments}x</span>
+                              </div>
+                            )}
+                            {d && (
+                              <div className="flex justify-between">
+                                <span className="text-zinc-500">Data completa:</span>
+                                <span className="text-zinc-300 tabular-nums">
+                                  {new Date(d).toLocaleString('pt-BR')}
+                                </span>
+                              </div>
+                            )}
+                            {t.checkout_url && (
+                              <a
+                                href={t.checkout_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block text-brand-400 hover:underline truncate pt-1"
+                              >
+                                🔗 Abrir checkout
+                              </a>
+                            )}
+                            {t.checkout_invoice_url && (
+                              <a
+                                href={t.checkout_invoice_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block text-brand-400 hover:underline truncate"
+                              >
+                                📄 Ver fatura
+                              </a>
+                            )}
                           </div>
-                          <Badge variant={STATUS_VARIANT[ns]} className="text-[9px]">
-                            {STATUS_LABELS[ns]}
-                          </Badge>
-                          <div className="text-zinc-100 font-semibold tabular-nums w-24 text-right">
-                            {formatCurrency(txValue(t))}
-                          </div>
-                        </div>
+                        </details>
                       );
                     })}
                   </div>
