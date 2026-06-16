@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/empty-state';
 import { useGuruContacts, useGuruTransactions, useGuruSubscriptions } from '@/hooks/useGuru';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { daysAgo, today } from '@/lib/guru';
+import { daysAgo, today, detectContactSearchKind, type ContactSearchKind } from '@/lib/guru';
 import {
   normalizeStatus,
   txStatus,
@@ -26,17 +26,32 @@ import {
 } from '@/types/guru';
 import { formatCurrency } from '@/lib/utils';
 
+const KIND_LABEL: Record<Exclude<ContactSearchKind, 'auto'>, string> = {
+  name: 'Nome',
+  email: 'Email',
+  doc: 'CPF/CNPJ',
+  phone: 'Telefone',
+};
+
 export function FinanceiroContatos() {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [kind, setKind] = useState<ContactSearchKind>('auto');
   const [selected, setSelected] = useState<GuruContact | null>(null);
 
   const debounced = useDebouncedValue(search, 400);
+
+  const detectedKind = useMemo(
+    () => (debounced ? detectContactSearchKind(debounced) : 'name'),
+    [debounced],
+  );
+  const effectiveKind = kind === 'auto' ? detectedKind : kind;
 
   const { data, isLoading, error } = useGuruContacts({
     per_page: 50,
     page,
     search: debounced || undefined,
+    kind,
   });
 
   const contacts = data?.data ?? [];
@@ -46,17 +61,46 @@ export function FinanceiroContatos() {
     <>
       <Header title="Contatos" subtitle="Base de contatos da Guru com histórico de compras" />
       <div className="page">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
-          <Input
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            placeholder="Buscar por nome, email, CPF ou telefone..."
-            className="pl-9"
-          />
+        <div className="space-y-2">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-500" />
+            <Input
+              value={search}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
+              placeholder="Buscar por nome, email, CPF ou telefone..."
+              className="pl-9 pr-24"
+            />
+            {debounced && (
+              <Badge
+                variant="muted"
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px]"
+              >
+                {KIND_LABEL[effectiveKind]}
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-1 flex-wrap text-[11px]">
+            <span className="text-zinc-500 mr-1">Buscar como:</span>
+            {(['auto', 'name', 'email', 'doc', 'phone'] as ContactSearchKind[]).map(
+              (k) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setKind(k)}
+                  className={`px-2 py-0.5 rounded-full border transition-colors ${
+                    kind === k
+                      ? 'bg-brand-500/20 border-brand-500/40 text-brand-200'
+                      : 'border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700'
+                  }`}
+                >
+                  {k === 'auto' ? 'Auto' : KIND_LABEL[k as Exclude<ContactSearchKind, 'auto'>]}
+                </button>
+              ),
+            )}
+          </div>
         </div>
 
         {isLoading ? (

@@ -24,8 +24,32 @@ export default async function handler(req: RequestLike, res: ResponseLike) {
     params.set('per_page', getStr('per_page') ?? '50');
     if (getStr('page')) params.set('page', getStr('page')!);
 
-    // A Guru pode usar `search` ou `q` ou `name`/`email`. Vou passar todos os que vierem.
-    for (const k of ['search', 'q', 'name', 'email', 'doc', 'phone', 'created_at_ini', 'created_at_end']) {
+    // A Guru pode usar diferentes nomes pra mesma busca. Pra cada tipo
+    // mandamos o nome principal + aliases comuns que a Guru aceita.
+    const name = getStr('name');
+    if (name) {
+      params.set('name', name);
+      params.set('contact_name', name);
+    }
+    const email = getStr('email');
+    if (email) {
+      params.set('email', email);
+      params.set('contact_email', email);
+    }
+    const doc = getStr('doc');
+    if (doc) {
+      params.set('doc', doc);
+      params.set('document', doc);
+      params.set('contact_document', doc);
+    }
+    const phone = getStr('phone');
+    if (phone) {
+      params.set('phone', phone);
+      params.set('phone_number', phone);
+      params.set('contact_phone', phone);
+    }
+    // Passthrough de outros params eventuais
+    for (const k of ['search', 'q', 'created_at_ini', 'created_at_end']) {
       const v = getStr(k);
       if (v) params.set(k, v);
     }

@@ -85,6 +85,23 @@ export function fetchSubscriptions(params?: {
   );
 }
 
+export type ContactSearchKind = 'auto' | 'name' | 'email' | 'doc' | 'phone';
+
+/** Detecta o tipo de busca a partir da string. */
+export function detectContactSearchKind(raw: string): Exclude<ContactSearchKind, 'auto'> {
+  const s = raw.trim();
+  if (!s) return 'name';
+  if (s.includes('@')) return 'email';
+  const digits = s.replace(/\D/g, '');
+  // CPF (11) ou CNPJ (14)
+  if (digits.length === 11 || digits.length === 14) return 'doc';
+  // Telefone BR (10 ou 11 dígitos com DDD)
+  if (digits.length >= 10 && digits.length <= 13) return 'phone';
+  // Sequencia só-numérica de 6+ dígitos: tratamos como doc (parcial)
+  if (digits.length >= 6 && digits === s.replace(/[.\-/\s]/g, '')) return 'doc';
+  return 'name';
+}
+
 export function fetchContacts(params?: {
   per_page?: number;
   page?: number;
@@ -92,19 +109,39 @@ export function fetchContacts(params?: {
   name?: string;
   email?: string;
   doc?: string;
+  phone?: string;
+  /** Força um tipo específico — sobrescreve a inferência. */
+  kind?: ContactSearchKind;
 }) {
-  // Se vier um "search" genérico, o backend tenta também como name/email/doc.
-  // Aqui passamos tudo direto.
-  const all: Record<string, string | number | undefined> = { ...params };
-  if (params?.search && !params.name && !params.email && !params.doc) {
-    // tenta inferir: se for número, doc; se tem @, email; senão name
+  const all: Record<string, string | number | undefined> = {
+    per_page: params?.per_page,
+    page: params?.page,
+  };
+  // Se algum tipo direto veio (name/email/doc/phone), respeita.
+  if (params?.name) all.name = params.name;
+  if (params?.email) all.email = params.email;
+  if (params?.doc) all.doc = params.doc.replace(/\D/g, '');
+  if (params?.phone) all.phone = params.phone.replace(/\D/g, '');
+
+  // Inferência via search
+  if (params?.search) {
     const s = params.search.trim();
-    if (/^\d+$/.test(s.replace(/\D/g, '')) && s.replace(/\D/g, '').length >= 6) {
-      all.doc = s.replace(/\D/g, '');
-    } else if (s.includes('@')) {
-      all.email = s;
-    } else {
-      all.name = s;
+    const kind =
+      params.kind && params.kind !== 'auto'
+        ? params.kind
+        : detectContactSearchKind(s);
+    switch (kind) {
+      case 'email':
+        all.email = s;
+        break;
+      case 'doc':
+        all.doc = s.replace(/\D/g, '');
+        break;
+      case 'phone':
+        all.phone = s.replace(/\D/g, '');
+        break;
+      default:
+        all.name = s;
     }
   }
   return get<GuruListResponse<GuruContact>>('contacts', all);

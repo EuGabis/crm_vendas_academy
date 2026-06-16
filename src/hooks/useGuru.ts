@@ -83,6 +83,8 @@ export function useGuruContacts(params?: {
   name?: string;
   email?: string;
   doc?: string;
+  phone?: string;
+  kind?: 'auto' | 'name' | 'email' | 'doc' | 'phone';
 }) {
   return useQuery({
     queryKey: ['guru', 'contacts', params],
