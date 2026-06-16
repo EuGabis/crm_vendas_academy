@@ -6,8 +6,21 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LoadingState, ErrorState } from '@/components/ui/empty-state';
-import { useGuruSubscription } from '@/hooks/useGuru';
+import {
+  useGuruSubscription,
+  useGuruSubscriptionInvoices,
+  useGuruTransactions,
+} from '@/hooks/useGuru';
 import { formatCurrency } from '@/lib/utils';
+import {
+  normalizeStatus,
+  txStatus,
+  txDate,
+  txProductName,
+  txValue,
+  STATUS_LABELS,
+  STATUS_VARIANT,
+} from '@/types/guru';
 
 function statusVariant(s?: string): 'success' | 'warning' | 'danger' | 'muted' {
   switch (s?.toLowerCase()) {
@@ -30,6 +43,14 @@ export function FinanceiroAssinaturaDetalhe() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: sub, isLoading, error } = useGuruSubscription(id);
+
+  const { data: invData, isLoading: loadingInv } = useGuruSubscriptionInvoices(id);
+  const { data: txData, isLoading: loadingTx } = useGuruTransactions(
+    id ? { subscription_id: id, per_page: 50 } : undefined,
+  );
+
+  const invoices = (invData?.data as Array<Record<string, unknown>>) ?? [];
+  const txs = txData?.data ?? [];
 
   return (
     <>
@@ -71,8 +92,15 @@ export function FinanceiroAssinaturaDetalhe() {
               <TabsList>
                 <TabsTrigger value="detalhe">Detalhe</TabsTrigger>
                 <TabsTrigger value="assinante">Assinante</TabsTrigger>
+                <TabsTrigger value="faturas">
+                  Faturas{invoices.length ? ` (${invoices.length})` : ''}
+                </TabsTrigger>
+                <TabsTrigger value="vendas">
+                  Vendas{txs.length ? ` (${txs.length})` : ''}
+                </TabsTrigger>
               </TabsList>
 
+              {/* DETALHE */}
               <TabsContent value="detalhe" className="mt-4 space-y-4">
                 <Card>
                   <h3 className="text-sm font-semibold text-white mb-3">Configuração</h3>
@@ -125,6 +153,7 @@ export function FinanceiroAssinaturaDetalhe() {
                 </Card>
               </TabsContent>
 
+              {/* ASSINANTE */}
               <TabsContent value="assinante" className="mt-4">
                 <Card>
                   {sub.contact ? (
@@ -143,6 +172,127 @@ export function FinanceiroAssinaturaDetalhe() {
                     </div>
                   ) : (
                     <p className="text-sm text-zinc-500">Sem dados de assinante.</p>
+                  )}
+                </Card>
+              </TabsContent>
+
+              {/* FATURAS */}
+              <TabsContent value="faturas" className="mt-4">
+                <Card className="!p-0 overflow-hidden">
+                  {loadingInv ? (
+                    <div className="p-6">
+                      <LoadingState />
+                    </div>
+                  ) : invoices.length === 0 ? (
+                    <p className="text-sm text-zinc-500 text-center py-8 px-4">
+                      Sem faturas para esta assinatura.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-zinc-900/60 text-zinc-400 text-[11px] uppercase tracking-wider">
+                          <tr>
+                            <th className="text-left font-semibold px-4 py-3">Código</th>
+                            <th className="text-center font-semibold px-4 py-3">Ciclo</th>
+                            <th className="text-left font-semibold px-4 py-3">Cobrado em</th>
+                            <th className="text-center font-semibold px-4 py-3">Status</th>
+                            <th className="text-right font-semibold px-4 py-3">Valor</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-900">
+                          {invoices.map((inv) => {
+                            const code = String(inv.id ?? inv.code ?? '');
+                            const cycle = inv.cycle ?? inv.cycle_number ?? '—';
+                            const charged =
+                              (inv.charged_at as string) ??
+                              (inv.due_date as string) ??
+                              (inv.created_at as string) ??
+                              '';
+                            const status = String(inv.status ?? '—');
+                            const value = Number(inv.value ?? inv.amount ?? 0);
+                            return (
+                              <tr key={code} className="hover:bg-zinc-900/40 transition-colors">
+                                <td className="px-4 py-3 font-mono text-xs text-zinc-300">
+                                  {code}
+                                </td>
+                                <td className="px-4 py-3 text-center text-zinc-400">
+                                  {String(cycle)}
+                                </td>
+                                <td className="px-4 py-3 text-zinc-400 text-xs tabular-nums">
+                                  {charged
+                                    ? new Date(charged).toLocaleDateString('pt-BR')
+                                    : '—'}
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <Badge variant={statusVariant(status)}>{status}</Badge>
+                                </td>
+                                <td className="px-4 py-3 text-right tabular-nums font-semibold text-emerald-400">
+                                  {formatCurrency(value)}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </Card>
+              </TabsContent>
+
+              {/* VENDAS */}
+              <TabsContent value="vendas" className="mt-4">
+                <Card className="!p-0 overflow-hidden">
+                  {loadingTx ? (
+                    <div className="p-6">
+                      <LoadingState />
+                    </div>
+                  ) : txs.length === 0 ? (
+                    <p className="text-sm text-zinc-500 text-center py-8 px-4">
+                      Sem vendas registradas para esta assinatura.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-zinc-900/60 text-zinc-400 text-[11px] uppercase tracking-wider">
+                          <tr>
+                            <th className="text-left font-semibold px-4 py-3">Código</th>
+                            <th className="text-left font-semibold px-4 py-3">Produto</th>
+                            <th className="text-left font-semibold px-4 py-3">Criada em</th>
+                            <th className="text-center font-semibold px-4 py-3">Status</th>
+                            <th className="text-right font-semibold px-4 py-3">Valor</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-zinc-900">
+                          {txs.map((t) => {
+                            const ns = normalizeStatus(txStatus(t));
+                            const d = txDate(t);
+                            return (
+                              <tr
+                                key={t.id}
+                                onClick={() => navigate(`/financeiro/vendas/${t.id}`)}
+                                className="hover:bg-zinc-900/40 cursor-pointer transition-colors"
+                              >
+                                <td className="px-4 py-3 font-mono text-xs text-zinc-300 truncate max-w-[180px]">
+                                  {t.id}
+                                </td>
+                                <td className="px-4 py-3 text-zinc-300 truncate max-w-[260px]">
+                                  {txProductName(t)}
+                                </td>
+                                <td className="px-4 py-3 text-zinc-400 text-xs tabular-nums">
+                                  {d ? new Date(d).toLocaleString('pt-BR') : '—'}
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <Badge variant={STATUS_VARIANT[ns]}>{STATUS_LABELS[ns]}</Badge>
+                                </td>
+                                <td className="px-4 py-3 text-right tabular-nums font-semibold text-emerald-400">
+                                  {formatCurrency(txValue(t))}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   )}
                 </Card>
               </TabsContent>

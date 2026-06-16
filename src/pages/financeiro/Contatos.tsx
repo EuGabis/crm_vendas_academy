@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { Users2, Search, ChevronLeft, ChevronRight, Mail, Phone, IdCard } from 'lucide-react';
+import { Users2, Search, ChevronLeft, ChevronRight, Mail, Phone, IdCard, ChevronRight as Chev } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -146,6 +147,7 @@ function ContactDetail({
   contact: GuruContact | null;
   onClose: () => void;
 }) {
+  const navigate = useNavigate();
   const { data: txData, isLoading: loadingTxs } = useGuruTransactions(
     contact
       ? {
@@ -272,57 +274,35 @@ function ContactDetail({
                         const ns = normalizeStatus(txStatus(t));
                         const d = txDate(t);
                         return (
-                          <details
+                          <button
                             key={t.id}
-                            className="rounded-lg bg-zinc-900/50 text-xs border border-zinc-800/50"
+                            onClick={() => {
+                              onClose();
+                              navigate(`/financeiro/vendas/${t.id}`);
+                            }}
+                            className="w-full text-left flex items-center justify-between gap-3 p-3 rounded-lg bg-zinc-900/50 hover:bg-zinc-900/80 border border-zinc-800/50 transition-colors"
                           >
-                            <summary className="flex items-center justify-between gap-3 p-3 cursor-pointer hover:bg-zinc-900/70 transition-colors list-none">
-                              <div className="flex-1 min-w-0">
-                                <div className="text-zinc-100 font-medium truncate">
-                                  {txProductName(t)}
-                                </div>
-                                <div className="flex items-center gap-2 mt-0.5">
-                                  <span className="text-zinc-500 tabular-nums">
-                                    {d ? new Date(d).toLocaleDateString('pt-BR') : '—'}
-                                  </span>
-                                  <Badge variant={STATUS_VARIANT[ns]} className="text-[9px]">
-                                    {STATUS_LABELS[ns]}
-                                  </Badge>
-                                </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="text-zinc-100 font-medium truncate text-xs">
+                                {txProductName(t)}
                               </div>
-                              <div className="text-emerald-400 font-bold tabular-nums shrink-0">
-                                {formatCurrency(txValue(t))}
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-zinc-500 tabular-nums text-[11px]">
+                                  {d ? new Date(d).toLocaleDateString('pt-BR') : '—'}
+                                </span>
+                                <Badge variant={STATUS_VARIANT[ns]} className="text-[9px]">
+                                  {STATUS_LABELS[ns]}
+                                </Badge>
+                                <span className="text-[10px] text-zinc-600">
+                                  {txPaymentLabel(t)}
+                                </span>
                               </div>
-                            </summary>
-                            <div className="border-t border-zinc-800/50 p-3 space-y-1.5 text-[11px]">
-                              <KV label="ID" value={t.id.slice(0, 14) + '...'} mono />
-                              <KV label="Pagamento" value={txPaymentLabel(t)} />
-                              {t.installments != null && t.installments > 1 && (
-                                <KV label="Parcelas" value={`${t.installments}x`} />
-                              )}
-                              {d && <KV label="Data completa" value={new Date(d).toLocaleString('pt-BR')} />}
-                              {t.checkout_url && (
-                                <a
-                                  href={t.checkout_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="block text-brand-400 hover:underline truncate pt-1"
-                                >
-                                  🔗 Abrir checkout
-                                </a>
-                              )}
-                              {t.checkout_invoice_url && (
-                                <a
-                                  href={t.checkout_invoice_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="block text-brand-400 hover:underline truncate"
-                                >
-                                  📄 Ver fatura
-                                </a>
-                              )}
                             </div>
-                          </details>
+                            <div className="text-emerald-400 font-bold tabular-nums shrink-0 text-sm">
+                              {formatCurrency(txValue(t))}
+                            </div>
+                            <Chev className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
+                          </button>
                         );
                       })}
                     </div>
@@ -340,42 +320,46 @@ function ContactDetail({
                   ) : (
                     <div className="space-y-2">
                       {subs.map((s) => (
-                        <div
+                        <button
                           key={s.id}
-                          className="rounded-lg bg-zinc-900/50 border border-zinc-800/50 p-3 text-xs space-y-2"
+                          onClick={() => {
+                            onClose();
+                            navigate(`/financeiro/assinaturas/${s.id}`);
+                          }}
+                          className="w-full text-left flex items-center justify-between gap-3 p-3 rounded-lg bg-zinc-900/50 hover:bg-zinc-900/80 border border-zinc-800/50 transition-colors"
                         >
-                          <div className="flex items-center justify-between gap-2 flex-wrap">
-                            <span className="text-zinc-100 font-medium truncate">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-zinc-100 font-medium truncate text-xs">
                               {s.product?.name ?? '—'}
-                            </span>
-                            <Badge
-                              variant={
-                                s.status === 'active' || s.status === 'paid'
-                                  ? 'success'
-                                  : 'muted'
-                              }
-                              className="text-[9px]"
-                            >
-                              {s.status ?? '—'}
-                            </Badge>
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                              <Badge
+                                variant={
+                                  s.status === 'active' || s.status === 'paid'
+                                    ? 'success'
+                                    : 'muted'
+                                }
+                                className="text-[9px]"
+                              >
+                                {s.status ?? '—'}
+                              </Badge>
+                              {s.cycle && (
+                                <span className="text-[10px] text-zinc-600">{s.cycle}</span>
+                              )}
+                              {s.charges_made != null && (
+                                <span className="text-[10px] text-zinc-600">
+                                  {s.charges_made} cobr.
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-1 text-[11px]">
-                            <KV label="ID" value={s.id.slice(0, 14) + '...'} mono />
-                            {s.charges_made != null && (
-                              <KV label="Cobranças feitas" value={String(s.charges_made)} />
-                            )}
-                            {s.next_charge_at && (
-                              <KV
-                                label="Próxima cobrança"
-                                value={new Date(s.next_charge_at).toLocaleDateString('pt-BR')}
-                              />
-                            )}
-                            {s.cycle && <KV label="Ciclo" value={s.cycle} />}
-                            {s.charge_value && (
-                              <KV label="Valor" value={formatCurrency(s.charge_value)} />
-                            )}
-                          </div>
-                        </div>
+                          {s.charge_value && (
+                            <div className="text-emerald-400 font-bold tabular-nums shrink-0 text-sm">
+                              {formatCurrency(s.charge_value)}
+                            </div>
+                          )}
+                          <Chev className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
+                        </button>
                       ))}
                     </div>
                   )}

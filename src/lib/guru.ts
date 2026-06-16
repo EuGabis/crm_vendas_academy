@@ -36,7 +36,24 @@ export interface GuruTransactionsParams {
   status?: string;
   contact_id?: string;
   product_id?: string;
+  subscription_id?: string;
   days?: number; // helper — backend converte em ordered_at_ini
+}
+
+export interface GuruInvoice {
+  id: string;
+  cycle?: number;
+  value?: number;
+  status?: string;
+  charged_at?: string;
+  type?: string;
+  [k: string]: unknown;
+}
+
+export function fetchSubscriptionInvoices(id: string) {
+  return get<{ data?: GuruInvoice[] } & Record<string, unknown>>(
+    `subscriptions/${encodeURIComponent(id)}/invoices`,
+  );
 }
 
 export function fetchTransactions(params?: GuruTransactionsParams) {
