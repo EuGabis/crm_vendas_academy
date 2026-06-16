@@ -6,6 +6,7 @@ import {
   fetchTransaction,
   fetchSubscription,
   fetchSubscriptionInvoices,
+  fetchInvoice,
   type GuruTransactionsParams,
 } from '@/lib/guru';
 
@@ -60,6 +61,16 @@ export function useGuruSubscriptionInvoices(id: string | undefined) {
     queryKey: ['guru', 'subscription', id, 'invoices'],
     enabled: !!id,
     queryFn: () => fetchSubscriptionInvoices(id!),
+    staleTime: STALE_5M,
+    retry: 1,
+  });
+}
+
+export function useGuruInvoice(id: string | undefined, subscriptionId?: string) {
+  return useQuery({
+    queryKey: ['guru', 'invoice', id, subscriptionId],
+    enabled: !!id,
+    queryFn: () => fetchInvoice(id!, subscriptionId),
     staleTime: STALE_5M,
     retry: 1,
   });

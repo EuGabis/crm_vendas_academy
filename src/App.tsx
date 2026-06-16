@@ -112,6 +112,11 @@ const FinanceiroAssinaturaDetalhe = lazy(() =>
     default: m.FinanceiroAssinaturaDetalhe,
   })),
 );
+const FinanceiroFaturaDetalhe = lazy(() =>
+  import('@/pages/financeiro/FaturaDetalhe').then((m) => ({
+    default: m.FinanceiroFaturaDetalhe,
+  })),
+);
 
 export default function App() {
   return (
@@ -180,6 +185,14 @@ export default function App() {
           element={
             <ProtectedRoute requireAdmin>
               <FinanceiroAssinaturaDetalhe />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/financeiro/faturas/:id"
+          element={
+            <ProtectedRoute requireAdmin>
+              <FinanceiroFaturaDetalhe />
             </ProtectedRoute>
           }
         />

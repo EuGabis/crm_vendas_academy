@@ -56,6 +56,15 @@ export function fetchSubscriptionInvoices(id: string) {
   );
 }
 
+export function fetchInvoice(id: string, subscriptionId?: string) {
+  const params: Record<string, string> = {};
+  if (subscriptionId) params.subscription_id = subscriptionId;
+  return get<GuruInvoice & Record<string, unknown>>(
+    `invoices/${encodeURIComponent(id)}`,
+    params,
+  );
+}
+
 export function fetchTransactions(params?: GuruTransactionsParams) {
   return get<GuruListResponse<GuruTransaction>>(
     'transactions',
@@ -107,6 +116,26 @@ export function fetchTransaction(id: string) {
 
 export function fetchSubscription(id: string) {
   return get<GuruSubscription>(`subscriptions/${encodeURIComponent(id)}`);
+}
+
+/**
+ * Formata uma data que pode vir como string ISO, número (epoch),
+ * tratando casos invalidos (NaN, 0, 1970) como em branco.
+ */
+export function fmtGuruDate(
+  raw: unknown,
+  opts: { withTime?: boolean } = {},
+): string {
+  if (raw == null || raw === '' || raw === 0) return '—';
+  const d =
+    typeof raw === 'number'
+      ? new Date(raw < 1e12 ? raw * 1000 : raw)
+      : new Date(String(raw));
+  const t = d.getTime();
+  if (!Number.isFinite(t) || t < 86400000) return '—'; // antes de 1970-01-02
+  return opts.withTime
+    ? d.toLocaleString('pt-BR')
+    : d.toLocaleDateString('pt-BR');
 }
 
 // Helpers de período

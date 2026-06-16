@@ -12,6 +12,7 @@ import {
   useGuruTransactions,
 } from '@/hooks/useGuru';
 import { formatCurrency } from '@/lib/utils';
+import { fmtGuruDate } from '@/lib/guru';
 import {
   normalizeStatus,
   txStatus,
@@ -204,24 +205,28 @@ export function FinanceiroAssinaturaDetalhe() {
                             const code = String(inv.id ?? inv.code ?? '');
                             const cycle = inv.cycle ?? inv.cycle_number ?? '—';
                             const charged =
-                              (inv.charged_at as string) ??
-                              (inv.due_date as string) ??
-                              (inv.created_at as string) ??
-                              '';
+                              inv.charged_at ??
+                              inv.paid_at ??
+                              inv.due_date ??
+                              inv.created_at;
                             const status = String(inv.status ?? '—');
                             const value = Number(inv.value ?? inv.amount ?? 0);
                             return (
-                              <tr key={code} className="hover:bg-zinc-900/40 transition-colors">
-                                <td className="px-4 py-3 font-mono text-xs text-zinc-300">
+                              <tr
+                                key={code}
+                                onClick={() =>
+                                  navigate(`/financeiro/faturas/${code}?sub=${id}`)
+                                }
+                                className="hover:bg-zinc-900/40 cursor-pointer transition-colors"
+                              >
+                                <td className="px-4 py-3 font-mono text-xs text-zinc-300 truncate max-w-[280px]">
                                   {code}
                                 </td>
                                 <td className="px-4 py-3 text-center text-zinc-400">
                                   {String(cycle)}
                                 </td>
                                 <td className="px-4 py-3 text-zinc-400 text-xs tabular-nums">
-                                  {charged
-                                    ? new Date(charged).toLocaleDateString('pt-BR')
-                                    : '—'}
+                                  {fmtGuruDate(charged)}
                                 </td>
                                 <td className="px-4 py-3 text-center">
                                   <Badge variant={statusVariant(status)}>{status}</Badge>
