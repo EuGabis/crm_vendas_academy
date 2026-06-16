@@ -6,7 +6,7 @@
  *
  * Modes: bearer | raw | apikey
  */
-import type { RequestLike, ResponseLike } from './client';
+import type { RequestLike, ResponseLike } from './client.js';
 
 const TOKEN = process.env.GURU_API_TOKEN ?? '';
 const BASE = process.env.GURU_API_BASE_URL ?? 'https://digitalmanager.guru/api/v2';
