@@ -38,10 +38,11 @@ import { formatCompactCurrency, formatCurrency, formatInt } from '@/lib/utils';
 
 export function FinanceiroDashboard() {
   // Últimos 30 dias (cobre dia + mês + gráfico)
+  // Conservador: 14 dias × 50 por página pra ficar dentro do limite Hobby
   const { data, isLoading, error } = useGuruTransactions({
-    ordered_at_ini: daysAgo(30),
+    ordered_at_ini: daysAgo(14),
     ordered_at_end: today(),
-    per_page: 100,
+    per_page: 50,
   });
 
   const transactions = data?.data ?? [];
@@ -74,7 +75,7 @@ export function FinanceiroDashboard() {
       byDay.set(d, (byDay.get(d) ?? 0) + txValue(t));
     }
     const dailySeries: { date: string; label: string; revenue: number }[] = [];
-    for (let i = 29; i >= 0; i--) {
+    for (let i = 13; i >= 0; i--) {
       const d = daysAgo(i);
       dailySeries.push({
         date: d,
@@ -104,7 +105,7 @@ export function FinanceiroDashboard() {
 
   return (
     <>
-      <Header title="Financeiro" subtitle="Vendas e receita da Guru — últimos 30 dias" />
+      <Header title="Financeiro" subtitle="Vendas e receita da Guru — últimos 14 dias" />
       <div className="page">
         {isLoading ? (
           <LoadingState />
@@ -152,7 +153,7 @@ export function FinanceiroDashboard() {
             <Card>
               <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
                 <div>
-                  <h3 className="text-sm font-semibold text-white">Receita diária — últimos 30 dias</h3>
+                  <h3 className="text-sm font-semibold text-white">Receita diária — últimos 14 dias</h3>
                   <p className="text-xs text-zinc-500">Apenas vendas com status pago</p>
                 </div>
               </div>
