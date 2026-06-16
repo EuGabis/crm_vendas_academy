@@ -202,6 +202,16 @@ export function FinanceiroVendaDetalhe() {
                 </TabsContent>
               )}
             </Tabs>
+
+            {/* JSON bruto pra debug - copia daqui pra eu mapear campos */}
+            <details className="rounded-lg bg-zinc-900/40 border border-zinc-800 p-3 mt-4">
+              <summary className="text-xs text-zinc-500 cursor-pointer">
+                JSON bruto da Guru (debug)
+              </summary>
+              <pre className="text-[10px] text-zinc-400 mt-2 overflow-x-auto max-h-96">
+                {JSON.stringify(tx, null, 2)}
+              </pre>
+            </details>
           </>
         )}
       </div>

@@ -155,9 +155,19 @@ const STATUS_MAP: Record<string, NormalizedStatus> = {
 /** Extrai status considerando que pode estar em payment.status, status, ou outros. */
 export function txStatus(tx: GuruTransaction): string | undefined {
   const anyTx = tx as unknown as Record<string, unknown>;
-  if (typeof tx.status === 'string') return tx.status;
+  // raiz
+  for (const k of ['status', 'transaction_status', 'order_status']) {
+    const v = anyTx[k];
+    if (typeof v === 'string' && v.trim() !== '') return v;
+  }
+  // aninhado
   const payment = anyTx['payment'] as Record<string, unknown> | undefined;
-  if (payment && typeof payment['status'] === 'string') return payment['status'] as string;
+  if (payment) {
+    for (const k of ['status', 'state']) {
+      const v = payment[k];
+      if (typeof v === 'string' && v.trim() !== '') return v;
+    }
+  }
   return undefined;
 }
 
@@ -191,10 +201,32 @@ export const STATUS_VARIANT: Record<
   unknown: 'muted',
 };
 
+function asNum(v: unknown): number | null {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string' && v.trim() !== '') {
+    const n = Number(v.replace(',', '.'));
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
 /** Tenta extrair valor da venda em vários formatos comuns. */
 export function txValue(tx: GuruTransaction): number {
-  if (typeof tx.value === 'number') return tx.value;
-  if (typeof tx.payment?.total === 'number') return tx.payment.total;
+  const anyTx = tx as unknown as Record<string, unknown>;
+  // Plano: tx.value, tx.total, tx.amount, tx.price
+  for (const k of ['value', 'total', 'amount', 'price']) {
+    const v = asNum(anyTx[k]);
+    if (v != null) return v;
+  }
+  // payment.total / amount / value
+  const payment = anyTx['payment'] as Record<string, unknown> | undefined;
+  if (payment) {
+    for (const k of ['total', 'amount', 'value', 'price']) {
+      const v = asNum(payment[k]);
+      if (v != null) return v;
+    }
+  }
+  // afiliações somadas
   if (Array.isArray(tx.affiliations) && tx.affiliations.length) {
     return tx.affiliations.reduce((a, b) => a + (b.value ?? 0), 0);
   }
@@ -202,51 +234,86 @@ export function txValue(tx: GuruTransaction): number {
 }
 
 export function txNetValue(tx: GuruTransaction): number {
-  if (typeof tx.net_value === 'number') return tx.net_value;
-  if (typeof tx.payment?.net === 'number') return tx.payment.net;
+  const anyTx = tx as unknown as Record<string, unknown>;
+  for (const k of ['net_value', 'net', 'net_amount']) {
+    const v = asNum(anyTx[k]);
+    if (v != null) return v;
+  }
+  const payment = anyTx['payment'] as Record<string, unknown> | undefined;
+  if (payment) {
+    for (const k of ['net', 'net_value', 'net_amount']) {
+      const v = asNum(payment[k]);
+      if (v != null) return v;
+    }
+  }
   return txValue(tx);
 }
 
+function toIsoFromAny(v: unknown): string | null {
+  if (v == null) return null;
+  if (typeof v === 'string' && v.trim() !== '') return v;
+  if (typeof v === 'number' && Number.isFinite(v)) {
+    // ms ou s? heurística: <1e12 ~= segundos
+    const ms = v < 1e12 ? v * 1000 : v;
+    if (ms < 86400000) return null; // antes de 1970-01-02 = inválido
+    return new Date(ms).toISOString();
+  }
+  if (typeof v === 'object' && v) {
+    const obj = v as Record<string, unknown>;
+    for (const k of ['value', 'iso', 'raw', 'date', 'datetime', '$date']) {
+      if (k in obj) {
+        const r = toIsoFromAny(obj[k]);
+        if (r) return r;
+      }
+    }
+  }
+  return null;
+}
+
 /** Extrai data de uma transaction. A Guru pode usar:
- *   - string solta: tx.confirmed_at
- *   - objeto: tx.dates.confirmed_at = "..." ou {value: "...", raw: "..."}
- *   - timestamp epoch dentro de payment.dates
- *   tenta todos.
+ *   - string solta na raiz: tx.confirmed_at, tx.ordered_at, ...
+ *   - aninhado em `dates`: tx.dates.confirmed_at (string ou {value: "..."})
+ *   - aninhado em `payment.dates` ou `payment.paid_at`
+ *   - timestamp epoch (segundos OU milissegundos)
+ *   tenta todos em ordem de prioridade.
  */
 export function txDate(tx: GuruTransaction): string | null {
   const anyTx = tx as unknown as Record<string, unknown>;
-  // Plano
-  const flat = [
-    tx.confirmed_at,
-    tx.ordered_at,
-    tx.created_at,
-    tx.updated_at,
-    tx.cancelled_at,
-  ].find((v) => typeof v === 'string') as string | undefined;
-  if (flat) return flat;
 
-  // Aninhado em `dates`
-  const dates = anyTx['dates'] as Record<string, unknown> | undefined;
-  if (dates && typeof dates === 'object') {
-    const candidates = ['confirmed_at', 'ordered_at', 'created_at', 'updated_at'];
-    for (const k of candidates) {
-      const v = dates[k];
-      if (typeof v === 'string') return v;
-      if (v && typeof v === 'object' && 'value' in (v as object)) {
-        const val = (v as { value?: unknown }).value;
-        if (typeof val === 'string') return val;
-        if (typeof val === 'number') return new Date(val * 1000).toISOString();
-      }
-      // unix timestamp puro
-      if (typeof v === 'number') return new Date(v * 1000).toISOString();
+  // ordem de preferência: paid > confirmed > ordered > created
+  const fields = [
+    'paid_at',
+    'confirmed_at',
+    'confirmed_date',
+    'ordered_at',
+    'order_date',
+    'created_at',
+    'created_date',
+    'updated_at',
+  ];
+
+  // 1) raiz
+  for (const k of fields) {
+    const r = toIsoFromAny(anyTx[k]);
+    if (r) return r;
+  }
+
+  // 2) aninhado em dates / payment.dates / payment
+  const containers: Array<Record<string, unknown> | undefined> = [
+    anyTx['dates'] as Record<string, unknown> | undefined,
+    (anyTx['payment'] as Record<string, unknown> | undefined)?.['dates'] as
+      | Record<string, unknown>
+      | undefined,
+    anyTx['payment'] as Record<string, unknown> | undefined,
+  ];
+  for (const c of containers) {
+    if (!c) continue;
+    for (const k of fields) {
+      const r = toIsoFromAny(c[k]);
+      if (r) return r;
     }
   }
 
-  // Fallback comum em APIs br: ordered/confirmed unix timestamp na raiz
-  for (const k of ['confirmed_at', 'ordered_at', 'created_at']) {
-    const v = anyTx[k];
-    if (typeof v === 'number') return new Date(v * 1000).toISOString();
-  }
   return null;
 }
 
