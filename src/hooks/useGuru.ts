@@ -17,7 +17,13 @@ export function useGuruTransactions(params?: GuruTransactionsParams) {
   });
 }
 
-export function useGuruSubscriptions(params?: { per_page?: number; page?: number; status?: string }) {
+export function useGuruSubscriptions(params?: {
+  per_page?: number;
+  page?: number;
+  status?: string;
+  contact_id?: string;
+  product_id?: string;
+}) {
   return useQuery({
     queryKey: ['guru', 'subscriptions', params],
     queryFn: () => fetchSubscriptions(params),

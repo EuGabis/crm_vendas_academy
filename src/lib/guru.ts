@@ -46,7 +46,13 @@ export function fetchTransactions(params?: GuruTransactionsParams) {
   );
 }
 
-export function fetchSubscriptions(params?: { per_page?: number; page?: number; status?: string }) {
+export function fetchSubscriptions(params?: {
+  per_page?: number;
+  page?: number;
+  status?: string;
+  contact_id?: string;
+  product_id?: string;
+}) {
   return get<GuruListResponse<GuruSubscription>>(
     'subscriptions',
     params as Record<string, string | number | undefined> | undefined,

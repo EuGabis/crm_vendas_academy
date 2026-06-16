@@ -9,7 +9,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/empty-state';
-import { useGuruContacts, useGuruTransactions } from '@/hooks/useGuru';
+import { useGuruContacts, useGuruTransactions, useGuruSubscriptions } from '@/hooks/useGuru';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { daysAgo, today } from '@/lib/guru';
 import {
   normalizeStatus,
@@ -145,8 +146,7 @@ function ContactDetail({
   contact: GuruContact | null;
   onClose: () => void;
 }) {
-  // Guru limita janela a 180 dias — usa esse máximo
-  const { data: txData, isLoading } = useGuruTransactions(
+  const { data: txData, isLoading: loadingTxs } = useGuruTransactions(
     contact
       ? {
           contact_id: contact.id,
@@ -156,8 +156,12 @@ function ContactDetail({
         }
       : undefined,
   );
+  const { data: subData, isLoading: loadingSubs } = useGuruSubscriptions(
+    contact ? { contact_id: contact.id, per_page: 50 } : undefined,
+  );
 
   const txs = txData?.data ?? [];
+  const subs = subData?.data ?? [];
   const stats = useMemo(() => {
     const paid = txs.filter((t) => normalizeStatus(txStatus(t)) === 'paid');
     const total = paid.reduce((a, t) => a + txValue(t), 0);
@@ -166,35 +170,15 @@ function ContactDetail({
 
   return (
     <Dialog open={!!contact} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-3xl">
         {contact && (
           <>
             <DialogHeader>
               <DialogTitle>{contact.name ?? 'Contato'}</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4 max-h-[70vh] overflow-y-auto">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                {contact.email && (
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-3.5 w-3.5 text-zinc-500" />
-                    <span className="text-zinc-300 truncate">{contact.email}</span>
-                  </div>
-                )}
-                {contact.phone_number && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-3.5 w-3.5 text-zinc-500" />
-                    <span className="text-zinc-300">{contact.phone_number}</span>
-                  </div>
-                )}
-                {contact.doc && (
-                  <div className="flex items-center gap-2">
-                    <IdCard className="h-3.5 w-3.5 text-zinc-500" />
-                    <span className="text-zinc-300 tabular-nums">{contact.doc}</span>
-                  </div>
-                )}
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-zinc-800">
+            <div className="space-y-4 max-h-[75vh] overflow-y-auto">
+              {/* Stats topo */}
+              <div className="grid grid-cols-3 gap-3 pb-3 border-b border-zinc-800">
                 <div>
                   <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-1">
                     Compras pagas
@@ -209,103 +193,219 @@ function ContactDetail({
                     {formatCurrency(stats.total)}
                   </p>
                 </div>
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-1">
+                    Assinaturas
+                  </p>
+                  <p className="text-2xl font-bold text-blue-400 tabular-nums">{subs.length}</p>
+                </div>
               </div>
 
-              <div className="border-t border-zinc-800 pt-4">
-                <div className="flex items-center justify-between mb-2">
+              <Tabs defaultValue="detalhe">
+                <TabsList className="w-full">
+                  <TabsTrigger value="detalhe" className="flex-1">
+                    Detalhe
+                  </TabsTrigger>
+                  <TabsTrigger value="vendas" className="flex-1">
+                    Vendas ({txs.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="assinaturas" className="flex-1">
+                    Assinaturas ({subs.length})
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* ABA DETALHE */}
+                <TabsContent value="detalhe" className="space-y-3 mt-4">
                   <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                    Histórico de compras (180 dias)
+                    Dados pessoais
                   </h4>
-                  <Badge variant="muted" className="text-[9px]">
-                    {txs.length} transações
-                  </Badge>
-                </div>
-                {isLoading ? (
-                  <p className="text-xs text-zinc-500">Carregando...</p>
-                ) : txs.length === 0 ? (
-                  <p className="text-xs text-zinc-500">Nenhuma transação no período.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {txs.map((t) => {
-                      const ns = normalizeStatus(txStatus(t));
-                      const d = txDate(t);
-                      return (
-                        <details
-                          key={t.id}
-                          className="rounded-lg bg-zinc-900/50 text-xs border border-zinc-800/50 group"
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <KV label="Nome" value={contact.name ?? '—'} />
+                    <KV label="Email" value={contact.email ?? '—'} icon={<Mail className="h-3 w-3" />} />
+                    <KV label="Documento" value={contact.doc ?? '—'} icon={<IdCard className="h-3 w-3" />} />
+                    <KV
+                      label="Telefone"
+                      value={contact.phone_number ?? '—'}
+                      icon={<Phone className="h-3 w-3" />}
+                    />
+                    {contact.company_name && (
+                      <KV label="Empresa" value={contact.company_name} />
+                    )}
+                  </div>
+
+                  {(contact.city || contact.state || contact.country) && (
+                    <>
+                      <h4 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider pt-3 border-t border-zinc-800">
+                        Endereço
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                        {contact.city && <KV label="Cidade" value={contact.city} />}
+                        {contact.state && <KV label="Estado" value={contact.state} />}
+                        {contact.country && <KV label="País" value={contact.country} />}
+                      </div>
+                    </>
+                  )}
+
+                  <div className="pt-3 border-t border-zinc-800">
+                    <p className="text-[10px] text-zinc-600">
+                      ID Guru: <code>{contact.id.slice(0, 14)}...</code>
+                    </p>
+                    {contact.created_at && (
+                      <p className="text-[10px] text-zinc-600 mt-1">
+                        Cadastrado em {new Date(contact.created_at).toLocaleDateString('pt-BR')}
+                      </p>
+                    )}
+                  </div>
+                </TabsContent>
+
+                {/* ABA VENDAS */}
+                <TabsContent value="vendas" className="mt-4">
+                  {loadingTxs ? (
+                    <p className="text-xs text-zinc-500">Carregando vendas...</p>
+                  ) : txs.length === 0 ? (
+                    <p className="text-xs text-zinc-500 text-center py-6">
+                      Nenhuma transação nos últimos 180 dias.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {txs.map((t) => {
+                        const ns = normalizeStatus(txStatus(t));
+                        const d = txDate(t);
+                        return (
+                          <details
+                            key={t.id}
+                            className="rounded-lg bg-zinc-900/50 text-xs border border-zinc-800/50"
+                          >
+                            <summary className="flex items-center justify-between gap-3 p-3 cursor-pointer hover:bg-zinc-900/70 transition-colors list-none">
+                              <div className="flex-1 min-w-0">
+                                <div className="text-zinc-100 font-medium truncate">
+                                  {txProductName(t)}
+                                </div>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-zinc-500 tabular-nums">
+                                    {d ? new Date(d).toLocaleDateString('pt-BR') : '—'}
+                                  </span>
+                                  <Badge variant={STATUS_VARIANT[ns]} className="text-[9px]">
+                                    {STATUS_LABELS[ns]}
+                                  </Badge>
+                                </div>
+                              </div>
+                              <div className="text-emerald-400 font-bold tabular-nums shrink-0">
+                                {formatCurrency(txValue(t))}
+                              </div>
+                            </summary>
+                            <div className="border-t border-zinc-800/50 p-3 space-y-1.5 text-[11px]">
+                              <KV label="ID" value={t.id.slice(0, 14) + '...'} mono />
+                              <KV label="Pagamento" value={txPaymentLabel(t)} />
+                              {t.installments != null && t.installments > 1 && (
+                                <KV label="Parcelas" value={`${t.installments}x`} />
+                              )}
+                              {d && <KV label="Data completa" value={new Date(d).toLocaleString('pt-BR')} />}
+                              {t.checkout_url && (
+                                <a
+                                  href={t.checkout_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block text-brand-400 hover:underline truncate pt-1"
+                                >
+                                  🔗 Abrir checkout
+                                </a>
+                              )}
+                              {t.checkout_invoice_url && (
+                                <a
+                                  href={t.checkout_invoice_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block text-brand-400 hover:underline truncate"
+                                >
+                                  📄 Ver fatura
+                                </a>
+                              )}
+                            </div>
+                          </details>
+                        );
+                      })}
+                    </div>
+                  )}
+                </TabsContent>
+
+                {/* ABA ASSINATURAS */}
+                <TabsContent value="assinaturas" className="mt-4">
+                  {loadingSubs ? (
+                    <p className="text-xs text-zinc-500">Carregando assinaturas...</p>
+                  ) : subs.length === 0 ? (
+                    <p className="text-xs text-zinc-500 text-center py-6">
+                      Sem assinaturas neste contato.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {subs.map((s) => (
+                        <div
+                          key={s.id}
+                          className="rounded-lg bg-zinc-900/50 border border-zinc-800/50 p-3 text-xs space-y-2"
                         >
-                          <summary className="flex items-center justify-between gap-3 p-3 cursor-pointer hover:bg-zinc-900/70 transition-colors list-none">
-                            <div className="flex-1 min-w-0">
-                              <div className="text-zinc-100 font-medium truncate">
-                                {txProductName(t)}
-                              </div>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-zinc-500 tabular-nums">
-                                  {d ? new Date(d).toLocaleDateString('pt-BR') : '—'}
-                                </span>
-                                <Badge variant={STATUS_VARIANT[ns]} className="text-[9px]">
-                                  {STATUS_LABELS[ns]}
-                                </Badge>
-                              </div>
-                            </div>
-                            <div className="text-emerald-400 font-bold tabular-nums shrink-0">
-                              {formatCurrency(txValue(t))}
-                            </div>
-                          </summary>
-                          <div className="border-t border-zinc-800/50 p-3 space-y-1.5 text-[11px]">
-                            <div className="flex justify-between">
-                              <span className="text-zinc-500">ID:</span>
-                              <code className="text-zinc-300">{t.id.slice(0, 14)}...</code>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-zinc-500">Pagamento:</span>
-                              <span className="text-zinc-300">{txPaymentLabel(t)}</span>
-                            </div>
-                            {t.installments && (
-                              <div className="flex justify-between">
-                                <span className="text-zinc-500">Parcelas:</span>
-                                <span className="text-zinc-300">{t.installments}x</span>
-                              </div>
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <span className="text-zinc-100 font-medium truncate">
+                              {s.product?.name ?? '—'}
+                            </span>
+                            <Badge
+                              variant={
+                                s.status === 'active' || s.status === 'paid'
+                                  ? 'success'
+                                  : 'muted'
+                              }
+                              className="text-[9px]"
+                            >
+                              {s.status ?? '—'}
+                            </Badge>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1 text-[11px]">
+                            <KV label="ID" value={s.id.slice(0, 14) + '...'} mono />
+                            {s.charges_made != null && (
+                              <KV label="Cobranças feitas" value={String(s.charges_made)} />
                             )}
-                            {d && (
-                              <div className="flex justify-between">
-                                <span className="text-zinc-500">Data completa:</span>
-                                <span className="text-zinc-300 tabular-nums">
-                                  {new Date(d).toLocaleString('pt-BR')}
-                                </span>
-                              </div>
+                            {s.next_charge_at && (
+                              <KV
+                                label="Próxima cobrança"
+                                value={new Date(s.next_charge_at).toLocaleDateString('pt-BR')}
+                              />
                             )}
-                            {t.checkout_url && (
-                              <a
-                                href={t.checkout_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block text-brand-400 hover:underline truncate pt-1"
-                              >
-                                🔗 Abrir checkout
-                              </a>
-                            )}
-                            {t.checkout_invoice_url && (
-                              <a
-                                href={t.checkout_invoice_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block text-brand-400 hover:underline truncate"
-                              >
-                                📄 Ver fatura
-                              </a>
+                            {s.cycle && <KV label="Ciclo" value={s.cycle} />}
+                            {s.charge_value && (
+                              <KV label="Valor" value={formatCurrency(s.charge_value)} />
                             )}
                           </div>
-                        </details>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
             </div>
           </>
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function KV({
+  label,
+  value,
+  icon,
+  mono,
+}: {
+  label: string;
+  value: string;
+  icon?: React.ReactNode;
+  mono?: boolean;
+}) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wider text-zinc-500 font-semibold mb-0.5 flex items-center gap-1">
+        {icon} {label}
+      </p>
+      <p className={mono ? 'text-zinc-300 font-mono text-[11px]' : 'text-zinc-200'}>{value}</p>
+    </div>
   );
 }
