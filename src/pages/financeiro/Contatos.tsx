@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { Users2, Search, ChevronLeft, ChevronRight, Mail, Phone, IdCard, ChevronRight as Chev } from 'lucide-react';
+import { Users2, Search, ChevronLeft, ChevronRight, Mail, Phone, IdCard, ArrowRight } from 'lucide-react';
 import { Header } from '@/components/layout/Header';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -301,7 +301,7 @@ function ContactDetail({
                             <div className="text-emerald-400 font-bold tabular-nums shrink-0 text-sm">
                               {formatCurrency(txValue(t))}
                             </div>
-                            <Chev className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
+                            <ArrowRight className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
                           </button>
                         );
                       })}
@@ -358,7 +358,7 @@ function ContactDetail({
                               {formatCurrency(s.charge_value)}
                             </div>
                           )}
-                          <Chev className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
+                          <ArrowRight className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
                         </button>
                       ))}
                     </div>

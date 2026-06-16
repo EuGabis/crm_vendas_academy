@@ -2,7 +2,7 @@
  * GET /api/guru/subscriptions
  * Mesmo padrão simples do transactions.ts (sem guruGet).
  */
-import type { RequestLike, ResponseLike } from './client';
+import type { RequestLike, ResponseLike } from '../client';
 
 const TOKEN = process.env.GURU_API_TOKEN ?? '';
 const BASE = process.env.GURU_API_BASE_URL ?? 'https://digitalmanager.guru/api/v2';
