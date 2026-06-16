@@ -1,4 +1,4 @@
-import { guruGet, type RequestLike, type ResponseLike } from './_client';
+import { guruGet, type RequestLike, type ResponseLike } from './client';
 
 export default async function handler(req: RequestLike, res: ResponseLike) {
   try {

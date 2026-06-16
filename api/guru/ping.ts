@@ -2,7 +2,7 @@
  * GET /api/guru/ping
  * Health check — confirma se a env var foi lida sem chamar a Guru.
  */
-import type { RequestLike, ResponseLike } from './_client';
+import type { RequestLike, ResponseLike } from './client';
 
 export default function handler(_req: RequestLike, res: ResponseLike) {
   const token = process.env.GURU_API_TOKEN ?? '';

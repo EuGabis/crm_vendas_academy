@@ -4,7 +4,7 @@
  * Mede quanto a Guru demora pra responder com N transactions
  * de D dias atrás. Retorna sempre 200 com info, mesmo em erro.
  */
-import { GURU_BASE_URL, type RequestLike, type ResponseLike } from './_client';
+import { GURU_BASE_URL, type RequestLike, type ResponseLike } from './client';
 
 const TOKEN = process.env.GURU_API_TOKEN ?? '';
 

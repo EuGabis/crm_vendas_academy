@@ -10,7 +10,7 @@ import {
   type RequestLike,
   type ResponseLike,
   type AuthMode,
-} from './_client';
+} from './client';
 
 const TOKEN = process.env.GURU_API_TOKEN ?? '';
 const ALL_MODES: AuthMode[] = ['bearer', 'raw', 'apikey'];
