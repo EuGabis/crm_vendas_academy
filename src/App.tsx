@@ -92,6 +92,18 @@ const ConfigDados = lazy(() =>
 const ConfigSobre = lazy(() =>
   import('@/pages/configuracoes/Sobre').then((m) => ({ default: m.ConfigSobre })),
 );
+const FinanceiroDashboard = lazy(() =>
+  import('@/pages/financeiro/Dashboard').then((m) => ({ default: m.FinanceiroDashboard })),
+);
+const FinanceiroVendas = lazy(() =>
+  import('@/pages/financeiro/Vendas').then((m) => ({ default: m.FinanceiroVendas })),
+);
+const FinanceiroAssinaturas = lazy(() =>
+  import('@/pages/financeiro/Assinaturas').then((m) => ({ default: m.FinanceiroAssinaturas })),
+);
+const FinanceiroContatos = lazy(() =>
+  import('@/pages/financeiro/Contatos').then((m) => ({ default: m.FinanceiroContatos })),
+);
 
 export default function App() {
   return (
@@ -122,6 +134,39 @@ export default function App() {
         <Route path="/workspace" element={<WorkspaceMeuDia />} />
         <Route path="/workspace/tarefas" element={<WorkspaceTarefas />} />
         <Route path="/workspace/materiais" element={<WorkspaceMateriais />} />
+
+        <Route
+          path="/financeiro"
+          element={
+            <ProtectedRoute requireAdmin>
+              <FinanceiroDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/financeiro/vendas"
+          element={
+            <ProtectedRoute requireAdmin>
+              <FinanceiroVendas />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/financeiro/assinaturas"
+          element={
+            <ProtectedRoute requireAdmin>
+              <FinanceiroAssinaturas />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/financeiro/contatos"
+          element={
+            <ProtectedRoute requireAdmin>
+              <FinanceiroContatos />
+            </ProtectedRoute>
+          }
+        />
 
         {/* Configurações (sub-rotas com layout próprio) */}
         <Route path="/configuracoes" element={<ConfiguracoesLayout />}>

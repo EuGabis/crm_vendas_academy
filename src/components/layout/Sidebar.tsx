@@ -22,6 +22,8 @@ import {
   BookOpen,
   Receipt,
   ShoppingBag,
+  DollarSign,
+  Repeat,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -67,6 +69,18 @@ const NAV: NavItem[] = [
     label: 'Marketing',
     icon: Megaphone,
     children: [{ to: '/marketing/trafego', label: 'Tráfego e CAC', icon: TrendingUp }],
+  },
+  {
+    type: 'group',
+    label: 'Financeiro',
+    icon: DollarSign,
+    adminOnly: true,
+    children: [
+      { to: '/financeiro', label: 'Dashboard', icon: LayoutGrid },
+      { to: '/financeiro/vendas', label: 'Vendas', icon: Receipt },
+      { to: '/financeiro/assinaturas', label: 'Assinaturas', icon: Repeat },
+      { to: '/financeiro/contatos', label: 'Contatos', icon: Users },
+    ],
   },
   {
     type: 'group',
