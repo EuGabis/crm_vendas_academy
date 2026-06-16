@@ -41,7 +41,7 @@ export function FinanceiroDashboard() {
   const { data, isLoading, error } = useGuruTransactions({
     ordered_at_ini: daysAgo(30),
     ordered_at_end: today(),
-    per_page: 200,
+    per_page: 100,
   });
 
   const transactions = data?.data ?? [];

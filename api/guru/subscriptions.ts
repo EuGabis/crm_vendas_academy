@@ -1,10 +1,10 @@
-import { guruGet, setCacheHeaders, type RequestLike, type ResponseLike } from './_client';
+import { guruGet, type RequestLike, type ResponseLike } from './_client';
 
 export default async function handler(req: RequestLike, res: ResponseLike) {
-  if (req.method !== 'GET') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
   try {
+    if (req.method !== 'GET') {
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
     const qp: Record<string, string> = {};
     for (const [k, v] of Object.entries(req.query ?? {})) {
       if (typeof v === 'string') qp[k] = v;
@@ -13,12 +13,15 @@ export default async function handler(req: RequestLike, res: ResponseLike) {
     if (!qp.per_page) qp.per_page = '50';
 
     const data = await guruGet<unknown>('/subscriptions', qp);
-    setCacheHeaders(res, 300);
+    try {
+      res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
+    } catch {
+      /* noop */
+    }
     return res.status(200).json(data);
   } catch (err) {
-    return res.status(500).json({
-      error: (err as Error).message,
-      hint: 'Tente GET /api/guru/diagnose para identificar o esquema correto',
-    });
+    const e = err as Error;
+    console.error('[subscriptions handler]', e.message, e.stack);
+    return res.status(500).json({ error: e.message ?? 'Unknown', name: e.name });
   }
 }
