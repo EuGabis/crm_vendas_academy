@@ -2,7 +2,7 @@
  * GET /api/guru/diagnose
  *
  * Testa quais endpoints/auth modes funcionam contra a API Guru.
- * Roda só uma vez pra confirmar o setup. Não cachear.
+ * Otimizado pra rodar em <10s (limite Vercel Hobby).
  */
 import {
   GURU_BASE_URL,
@@ -14,6 +14,7 @@ import {
 
 const TOKEN = process.env.GURU_API_TOKEN ?? '';
 const ALL_MODES: AuthMode[] = ['bearer', 'raw', 'apikey'];
+const PER_REQUEST_TIMEOUT_MS = 2500;
 
 function headersFor(mode: AuthMode): Record<string, string> {
   const base = { Accept: 'application/json' };
@@ -27,74 +28,81 @@ function headersFor(mode: AuthMode): Record<string, string> {
   }
 }
 
+async function tryOne(path: string, mode: AuthMode) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), PER_REQUEST_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${GURU_BASE_URL}${path}`, {
+      method: 'GET',
+      headers: headersFor(mode),
+      signal: ctrl.signal,
+    });
+    const text = await res.text().catch(() => '');
+    return {
+      path,
+      mode,
+      status: res.status,
+      ok: res.ok,
+      bodyPreview: text.slice(0, 300),
+      contentType: res.headers.get('content-type') ?? '',
+    };
+  } catch (err) {
+    return {
+      path,
+      mode,
+      status: 0,
+      ok: false,
+      bodyPreview: `error: ${(err as Error).message}`,
+      contentType: '',
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export default async function handler(_req: RequestLike, res: ResponseLike) {
-  if (!isConfigured()) {
+  try {
+    if (!isConfigured()) {
+      return res.status(500).json({
+        error: 'GURU_API_TOKEN não configurada',
+        hint: 'Adicione a env var no Vercel e redeploy',
+      });
+    }
+
+    // Tenta /transactions com os 3 modos (em paralelo pra ser rápido)
+    const transactions = await Promise.all(
+      ALL_MODES.map((m) => tryOne('/transactions?per_page=1', m)),
+    );
+
+    // Se algum funcionou, tenta os outros endpoints só com o mode que deu certo
+    const workingMode = transactions.find((r) => r.ok)?.mode;
+    let others: Awaited<ReturnType<typeof tryOne>>[] = [];
+    if (workingMode) {
+      others = await Promise.all([
+        tryOne('/subscriptions?per_page=1', workingMode),
+        tryOne('/contacts?per_page=1', workingMode),
+      ]);
+    }
+
+    const allResults = [...transactions, ...others];
+    const working = allResults.filter((r) => r.ok);
+
+    return res.status(200).json({
+      baseUrl: GURU_BASE_URL,
+      tokenLength: TOKEN.length,
+      tokenPreview: TOKEN.slice(0, 6) + '...' + TOKEN.slice(-4),
+      detectedMode: workingMode ?? null,
+      working,
+      allResults,
+      next: workingMode
+        ? `Auth: ${workingMode}. ${working.length} endpoints OK.`
+        : 'Nenhum modo funcionou — verifique o token na Guru',
+    });
+  } catch (err) {
     return res.status(500).json({
-      error: 'GURU_API_TOKEN não configurada',
-      hint: 'Adicione a env var no Vercel e redeploy',
+      error: 'Diagnose crashed',
+      message: (err as Error).message,
+      stack: (err as Error).stack?.split('\n').slice(0, 5),
     });
   }
-
-  const candidatePaths = [
-    '/transactions?per_page=1',
-    '/transaction?per_page=1',
-    '/sales?per_page=1',
-    '/contacts?per_page=1',
-    '/subscriptions?per_page=1',
-  ];
-
-  const results: Array<{
-    path: string;
-    mode: AuthMode;
-    status: number;
-    ok: boolean;
-    bodyPreview: string;
-    contentType: string;
-  }> = [];
-
-  for (const path of candidatePaths) {
-    for (const mode of ALL_MODES) {
-      try {
-        const res2 = await fetch(`${GURU_BASE_URL}${path}`, {
-          method: 'GET',
-          headers: headersFor(mode),
-          signal: AbortSignal.timeout(10000),
-        });
-        const text = await res2.text();
-        results.push({
-          path,
-          mode,
-          status: res2.status,
-          ok: res2.ok,
-          bodyPreview: text.slice(0, 200),
-          contentType: res2.headers.get('content-type') ?? '',
-        });
-        // se OK nesse path, pula os outros modos pra economizar
-        if (res2.ok) break;
-      } catch (err) {
-        results.push({
-          path,
-          mode,
-          status: 0,
-          ok: false,
-          bodyPreview: `network error: ${(err as Error).message}`,
-          contentType: '',
-        });
-      }
-    }
-  }
-
-  const working = results.filter((r) => r.ok);
-
-  return res.status(200).json({
-    baseUrl: GURU_BASE_URL,
-    tokenLength: TOKEN.length,
-    tokenPreview: TOKEN.slice(0, 6) + '...' + TOKEN.slice(-4),
-    working,
-    allResults: results,
-    next:
-      working.length === 0
-        ? 'Nenhum endpoint funcionou. Verifique o token e a URL base.'
-        : `Use mode=${working[0].mode} no path=${working[0].path}`,
-  });
 }
