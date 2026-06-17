@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { LoadingState, ErrorState } from '@/components/ui/empty-state';
-import { useGuruTransactions } from '@/hooks/useGuru';
+import { useGuruTransactionsAll } from '@/hooks/useGuru';
 import {
   today,
   daysAgo,
@@ -120,21 +120,32 @@ export function FinanceiroDashboard() {
   const end = period.end();
   const prev = period.prev();
 
-  const { data, isLoading, error } = useGuruTransactions({
+  const { data, isLoading, error } = useGuruTransactionsAll({
     ordered_at_ini: ini,
     ordered_at_end: end,
     per_page: 100,
+    maxPages: 5,
   });
 
-  // Período anterior pra comparação
-  const { data: prevData } = useGuruTransactions({
+  // Período anterior pra comparação (limita a 3 páginas pra economizar)
+  const { data: prevData } = useGuruTransactionsAll({
     ordered_at_ini: prev.ini,
     ordered_at_end: prev.end,
     per_page: 100,
+    maxPages: 3,
   });
 
   const transactions = data?.data ?? [];
   const prevTransactions = prevData?.data ?? [];
+  const meta = (data?.meta ?? {}) as {
+    total?: number;
+    truncated?: boolean;
+    fetched_pages?: number;
+  };
+  const totalAvailable =
+    typeof meta.total === 'number' ? meta.total : transactions.length;
+  const truncated = meta.truncated === true;
+  const fetchedPages = meta.fetched_pages ?? 1;
 
   const stats = useMemo(() => {
     const todayStr = today();
@@ -250,6 +261,19 @@ export function FinanceiroDashboard() {
               {ini === end ? ini : `${ini} → ${end}`}
             </span>
           </div>
+          {transactions.length > 0 && (
+            <div className="text-[10px] text-zinc-600 mt-2 flex items-center gap-2">
+              <span>
+                {transactions.length} de {totalAvailable} transações ·{' '}
+                {fetchedPages} {fetchedPages === 1 ? 'página' : 'páginas'} buscadas
+              </span>
+              {truncated && (
+                <span className="text-amber-500">
+                  ⚠ período tem mais dados — aumente o limite ou estreite o filtro
+                </span>
+              )}
+            </div>
+          )}
         </Card>
 
         {isLoading ? (

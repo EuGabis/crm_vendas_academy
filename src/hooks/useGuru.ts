@@ -21,6 +21,57 @@ export function useGuruTransactions(params?: GuruTransactionsParams) {
   });
 }
 
+/**
+ * Busca multiplas paginas de transactions em paralelo e agrega.
+ * Resolve o caso do Dashboard onde a 1a pagina nao cobre o periodo inteiro.
+ *
+ * Estratégia:
+ *  - busca page 1
+ *  - se meta.last_page > 1, busca pages 2..min(last_page, maxPages) em paralelo
+ *  - retorna { data: [...todas], meta: { total, last_page, fetched_pages } }
+ */
+export function useGuruTransactionsAll(
+  params: GuruTransactionsParams & { maxPages?: number },
+) {
+  const { maxPages = 5, ...rest } = params;
+  return useQuery({
+    queryKey: ['guru', 'transactions', 'all', rest, maxPages],
+    staleTime: STALE_5M,
+    retry: 1,
+    queryFn: async () => {
+      const first = await fetchTransactions({ ...rest, page: 1 });
+      const lastPage = Math.min(first.meta?.last_page ?? 1, maxPages);
+      if (lastPage <= 1) {
+        return {
+          data: first.data ?? [],
+          meta: {
+            ...(first.meta ?? {}),
+            fetched_pages: 1,
+            truncated: (first.meta?.last_page ?? 1) > 1,
+          },
+        };
+      }
+      const pages = [];
+      for (let p = 2; p <= lastPage; p++) pages.push(p);
+      const rest_results = await Promise.all(
+        pages.map((p) => fetchTransactions({ ...rest, page: p })),
+      );
+      const all = [
+        ...(first.data ?? []),
+        ...rest_results.flatMap((r) => r.data ?? []),
+      ];
+      return {
+        data: all,
+        meta: {
+          ...(first.meta ?? {}),
+          fetched_pages: lastPage,
+          truncated: (first.meta?.last_page ?? 1) > lastPage,
+        },
+      };
+    },
+  });
+}
+
 export function useGuruSubscriptions(params?: {
   per_page?: number;
   page?: number;
