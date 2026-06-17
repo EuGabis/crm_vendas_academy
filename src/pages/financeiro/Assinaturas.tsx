@@ -15,29 +15,17 @@ import {
 import { LoadingState, ErrorState, EmptyState } from '@/components/ui/empty-state';
 import { useGuruSubscriptions } from '@/hooks/useGuru';
 import { formatCurrency } from '@/lib/utils';
-
-const STATUS_LABELS: Record<string, string> = {
-  active: 'Ativa',
-  cancelled: 'Cancelada',
-  expired: 'Expirada',
-  paused: 'Pausada',
-  pending: 'Pendente',
-};
-
-function statusVariant(s?: string): 'success' | 'warning' | 'danger' | 'muted' {
-  switch (s?.toLowerCase()) {
-    case 'active':
-      return 'success';
-    case 'pending':
-    case 'paused':
-      return 'warning';
-    case 'cancelled':
-    case 'expired':
-      return 'danger';
-    default:
-      return 'muted';
-  }
-}
+import { fmtGuruDate } from '@/lib/guru';
+import {
+  subStatus,
+  subValue,
+  subChargesMade,
+  subChargesTotal,
+  subNextCharge,
+  normalizeSubStatus,
+  SUB_STATUS_LABELS,
+  SUB_STATUS_VARIANT,
+} from '@/types/guru';
 
 export function FinanceiroAssinaturas() {
   const navigate = useNavigate();
@@ -112,40 +100,44 @@ export function FinanceiroAssinaturas() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-900">
-                  {subs.map((s) => (
-                    <tr
-                      key={s.id}
-                      onClick={() => navigate(`/financeiro/assinaturas/${s.id}`)}
-                      className="hover:bg-zinc-900/40 cursor-pointer transition-colors"
-                    >
-                      <td className="px-4 py-3">
-                        <div className="text-zinc-100">{s.contact?.name ?? '—'}</div>
-                        <div className="text-[11px] text-zinc-500 truncate max-w-[200px]">
-                          {s.contact?.email ?? ''}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-zinc-300 hidden md:table-cell truncate max-w-[220px]">
-                        {s.product?.name ?? '—'}
-                      </td>
-                      <td className="px-4 py-3 text-center">
-                        <Badge variant={statusVariant(s.status)}>
-                          {STATUS_LABELS[s.status?.toLowerCase() ?? ''] ?? s.status ?? '—'}
-                        </Badge>
-                      </td>
-                      <td className="px-4 py-3 text-center text-zinc-300 hidden lg:table-cell">
-                        {s.charges_made ?? '—'}
-                        {s.charges_count ? ` / ${s.charges_count}` : ''}
-                      </td>
-                      <td className="px-4 py-3 text-zinc-400 text-xs hidden lg:table-cell tabular-nums">
-                        {s.next_charge_at
-                          ? new Date(s.next_charge_at).toLocaleDateString('pt-BR')
-                          : '—'}
-                      </td>
-                      <td className="px-4 py-3 text-right tabular-nums font-semibold text-emerald-400">
-                        {formatCurrency(s.charge_value ?? 0)}
-                      </td>
-                    </tr>
-                  ))}
+                  {subs.map((s) => {
+                    const ns = normalizeSubStatus(subStatus(s));
+                    const made = subChargesMade(s);
+                    const total = subChargesTotal(s);
+                    const next = subNextCharge(s);
+                    return (
+                      <tr
+                        key={s.id}
+                        onClick={() => navigate(`/financeiro/assinaturas/${s.id}`)}
+                        className="hover:bg-zinc-900/40 cursor-pointer transition-colors"
+                      >
+                        <td className="px-4 py-3">
+                          <div className="text-zinc-100">{s.contact?.name ?? '—'}</div>
+                          <div className="text-[11px] text-zinc-500 truncate max-w-[200px]">
+                            {s.contact?.email ?? ''}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-zinc-300 hidden md:table-cell truncate max-w-[220px]">
+                          {s.product?.name ?? '—'}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <Badge variant={SUB_STATUS_VARIANT[ns]}>
+                            {SUB_STATUS_LABELS[ns]}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-center text-zinc-300 hidden lg:table-cell">
+                          {made != null ? made : '—'}
+                          {total != null ? ` / ${total}` : ''}
+                        </td>
+                        <td className="px-4 py-3 text-zinc-400 text-xs hidden lg:table-cell tabular-nums">
+                          {fmtGuruDate(next)}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums font-semibold text-emerald-400">
+                          {formatCurrency(subValue(s))}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

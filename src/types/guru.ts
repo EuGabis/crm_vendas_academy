@@ -321,6 +321,181 @@ export function txProductName(tx: GuruTransaction): string {
   return tx.product?.name ?? tx.affiliations?.[0]?.name ?? '—';
 }
 
+// ============================================================================
+// Helpers de Subscription (mesma estratégia defensiva das transactions)
+// ============================================================================
+
+export function subStatus(sub: GuruSubscription): string | undefined {
+  const any = sub as unknown as Record<string, unknown>;
+  for (const k of ['status', 'subscription_status', 'state']) {
+    const v = any[k];
+    if (typeof v === 'string' && v.trim() !== '') return v;
+  }
+  const last = any['last_status'];
+  if (typeof last === 'string' && last.trim() !== '') return last;
+  return undefined;
+}
+
+export function subValue(sub: GuruSubscription): number {
+  const any = sub as unknown as Record<string, unknown>;
+  for (const k of [
+    'charge_value',
+    'value',
+    'amount',
+    'price',
+    'recurrent_value',
+    'product_value',
+  ]) {
+    const v = asNum(any[k]);
+    if (v != null) return v;
+  }
+  // dentro de product / charge
+  const product = any['product'] as Record<string, unknown> | undefined;
+  if (product) {
+    for (const k of ['value', 'price', 'amount']) {
+      const v = asNum(product[k]);
+      if (v != null) return v;
+    }
+  }
+  const charge = any['charge'] as Record<string, unknown> | undefined;
+  if (charge) {
+    for (const k of ['value', 'amount', 'total']) {
+      const v = asNum(charge[k]);
+      if (v != null) return v;
+    }
+  }
+  return 0;
+}
+
+export function subChargesMade(sub: GuruSubscription): number | undefined {
+  const any = sub as unknown as Record<string, unknown>;
+  for (const k of [
+    'charges_made',
+    'made_charges',
+    'charges_count',
+    'charges',
+    'cycles_made',
+    'cycle_number',
+  ]) {
+    const v = asNum(any[k]);
+    if (v != null) return v;
+  }
+  return undefined;
+}
+
+export function subChargesTotal(sub: GuruSubscription): number | undefined {
+  const any = sub as unknown as Record<string, unknown>;
+  for (const k of ['charges_count', 'total_charges', 'cycles', 'cycles_total']) {
+    const v = asNum(any[k]);
+    if (v != null) return v;
+  }
+  return undefined;
+}
+
+export function subNextCharge(sub: GuruSubscription): string | null {
+  const any = sub as unknown as Record<string, unknown>;
+  const candidates = [
+    'next_charge_at',
+    'next_charge_date',
+    'next_billing_at',
+    'next_billing_date',
+    'next_cycle_at',
+  ];
+  for (const k of candidates) {
+    const r = toIsoFromAny(any[k]);
+    if (r) return r;
+  }
+  // aninhado em dates
+  const dates = any['dates'] as Record<string, unknown> | undefined;
+  if (dates) {
+    for (const k of candidates) {
+      const r = toIsoFromAny(dates[k]);
+      if (r) return r;
+    }
+  }
+  return null;
+}
+
+export function subStartedAt(sub: GuruSubscription): string | null {
+  const any = sub as unknown as Record<string, unknown>;
+  for (const k of ['started_at', 'start_at', 'start_date', 'created_at']) {
+    const r = toIsoFromAny(any[k]);
+    if (r) return r;
+  }
+  return null;
+}
+
+export function subCancelledAt(sub: GuruSubscription): string | null {
+  const any = sub as unknown as Record<string, unknown>;
+  for (const k of ['cancelled_at', 'canceled_at', 'cancel_date']) {
+    const r = toIsoFromAny(any[k]);
+    if (r) return r;
+  }
+  return null;
+}
+
+export function subCycle(sub: GuruSubscription): string | undefined {
+  const any = sub as unknown as Record<string, unknown>;
+  for (const k of ['cycle', 'recurrence', 'interval', 'period', 'frequency']) {
+    const v = any[k];
+    if (typeof v === 'string' && v.trim() !== '') return v;
+    if (typeof v === 'number') return String(v);
+  }
+  return undefined;
+}
+
+export type NormalizedSubStatus =
+  | 'active'
+  | 'paused'
+  | 'cancelled'
+  | 'expired'
+  | 'pending'
+  | 'trial'
+  | 'unknown';
+
+const SUB_STATUS_MAP: Record<string, NormalizedSubStatus> = {
+  active: 'active',
+  activated: 'active',
+  paid: 'active',
+  trialing: 'trial',
+  trial: 'trial',
+  paused: 'paused',
+  pending: 'pending',
+  waiting: 'pending',
+  cancelled: 'cancelled',
+  canceled: 'cancelled',
+  expired: 'expired',
+  ended: 'expired',
+};
+
+export function normalizeSubStatus(s?: string): NormalizedSubStatus {
+  if (!s) return 'unknown';
+  return SUB_STATUS_MAP[s.toLowerCase()] ?? 'unknown';
+}
+
+export const SUB_STATUS_LABELS: Record<NormalizedSubStatus, string> = {
+  active: 'Ativa',
+  paused: 'Pausada',
+  cancelled: 'Cancelada',
+  expired: 'Expirada',
+  pending: 'Pendente',
+  trial: 'Trial',
+  unknown: 'Desconhecido',
+};
+
+export const SUB_STATUS_VARIANT: Record<
+  NormalizedSubStatus,
+  'success' | 'warning' | 'danger' | 'muted' | 'info'
+> = {
+  active: 'success',
+  trial: 'info',
+  pending: 'warning',
+  paused: 'warning',
+  cancelled: 'muted',
+  expired: 'muted',
+  unknown: 'muted',
+};
+
 export function txPaymentLabel(tx: GuruTransaction): string {
   const m = tx.payment?.method ?? tx.payment_method ?? '';
   const lower = m.toLowerCase();

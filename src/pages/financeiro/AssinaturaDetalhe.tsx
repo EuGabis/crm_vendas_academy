@@ -21,19 +21,31 @@ import {
   txValue,
   STATUS_LABELS,
   STATUS_VARIANT,
+  subStatus,
+  subValue,
+  subChargesMade,
+  subChargesTotal,
+  subNextCharge,
+  subStartedAt,
+  subCancelledAt,
+  subCycle,
+  normalizeSubStatus,
+  SUB_STATUS_LABELS,
+  SUB_STATUS_VARIANT,
 } from '@/types/guru';
 
-function statusVariant(s?: string): 'success' | 'warning' | 'danger' | 'muted' {
+function invStatusVariant(s?: string): 'success' | 'warning' | 'danger' | 'muted' {
   switch (s?.toLowerCase()) {
-    case 'active':
     case 'paid':
+    case 'approved':
       return 'success';
     case 'pending':
-    case 'paused':
+    case 'waiting':
       return 'warning';
+    case 'overdue':
     case 'cancelled':
     case 'canceled':
-    case 'expired':
+    case 'refused':
       return 'danger';
     default:
       return 'muted';
@@ -77,14 +89,22 @@ export function FinanceiroAssinaturaDetalhe() {
                   <code className="text-[11px] text-zinc-500">{sub.id}</code>
                 </div>
                 <div className="text-right">
-                  <Badge variant={statusVariant(sub.status)} className="mb-2">
-                    {sub.status ?? '—'}
-                  </Badge>
-                  {sub.charge_value && (
-                    <p className="text-3xl font-bold text-emerald-400 tabular-nums">
-                      {formatCurrency(sub.charge_value)}
-                    </p>
-                  )}
+                  {(() => {
+                    const ns = normalizeSubStatus(subStatus(sub));
+                    const v = subValue(sub);
+                    return (
+                      <>
+                        <Badge variant={SUB_STATUS_VARIANT[ns]} className="mb-2">
+                          {SUB_STATUS_LABELS[ns]}
+                        </Badge>
+                        {v > 0 && (
+                          <p className="text-3xl font-bold text-emerald-400 tabular-nums">
+                            {formatCurrency(v)}
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </Card>
@@ -103,55 +123,68 @@ export function FinanceiroAssinaturaDetalhe() {
 
               {/* DETALHE */}
               <TabsContent value="detalhe" className="mt-4 space-y-4">
-                <Card>
-                  <h3 className="text-sm font-semibold text-white mb-3">Configuração</h3>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <KV label="Forma de pagamento" value={sub.payment_method ?? '—'} />
-                    <KV label="Ciclo" value={sub.cycle ?? '—'} />
-                    {sub.charge_value && (
-                      <KV label="Valor de cobrança" value={formatCurrency(sub.charge_value)} />
-                    )}
-                    {sub.net_value && (
-                      <KV label="Valor líquido" value={formatCurrency(sub.net_value)} />
-                    )}
-                  </div>
-                </Card>
+                {(() => {
+                  const val = subValue(sub);
+                  const cycle = subCycle(sub);
+                  const made = subChargesMade(sub);
+                  const total = subChargesTotal(sub);
+                  const next = subNextCharge(sub);
+                  const started = subStartedAt(sub);
+                  const cancelled = subCancelledAt(sub);
+                  return (
+                    <>
+                      <Card>
+                        <h3 className="text-sm font-semibold text-white mb-3">Configuração</h3>
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <KV label="Forma de pagamento" value={sub.payment_method ?? '—'} />
+                          <KV label="Ciclo" value={cycle ?? '—'} />
+                          {val > 0 && (
+                            <KV label="Valor de cobrança" value={formatCurrency(val)} />
+                          )}
+                          {sub.net_value != null && (
+                            <KV label="Valor líquido" value={formatCurrency(sub.net_value)} />
+                          )}
+                        </div>
+                      </Card>
 
-                <Card>
-                  <h3 className="text-sm font-semibold text-white mb-3">Cobranças</h3>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    {sub.charges_made != null && (
-                      <KV label="Cobranças feitas" value={String(sub.charges_made)} />
-                    )}
-                    {sub.charges_count != null && (
-                      <KV label="Total de cobranças" value={String(sub.charges_count)} />
-                    )}
-                    {sub.next_charge_at && (
-                      <KV
-                        label="Próxima cobrança"
-                        value={new Date(sub.next_charge_at).toLocaleString('pt-BR')}
-                      />
-                    )}
-                  </div>
-                </Card>
+                      <Card>
+                        <h3 className="text-sm font-semibold text-white mb-3">Cobranças</h3>
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          {made != null && (
+                            <KV label="Cobranças feitas" value={String(made)} />
+                          )}
+                          {total != null && (
+                            <KV label="Total de cobranças" value={String(total)} />
+                          )}
+                          {next && (
+                            <KV
+                              label="Próxima cobrança"
+                              value={fmtGuruDate(next, { withTime: true })}
+                            />
+                          )}
+                        </div>
+                      </Card>
 
-                <Card>
-                  <h3 className="text-sm font-semibold text-white mb-3">Datas</h3>
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    {sub.started_at && (
-                      <KV
-                        label="Iniciada em"
-                        value={new Date(sub.started_at).toLocaleString('pt-BR')}
-                      />
-                    )}
-                    {sub.cancelled_at && (
-                      <KV
-                        label="Cancelada em"
-                        value={new Date(sub.cancelled_at).toLocaleString('pt-BR')}
-                      />
-                    )}
-                  </div>
-                </Card>
+                      <Card>
+                        <h3 className="text-sm font-semibold text-white mb-3">Datas</h3>
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          {started && (
+                            <KV
+                              label="Iniciada em"
+                              value={fmtGuruDate(started, { withTime: true })}
+                            />
+                          )}
+                          {cancelled && (
+                            <KV
+                              label="Cancelada em"
+                              value={fmtGuruDate(cancelled, { withTime: true })}
+                            />
+                          )}
+                        </div>
+                      </Card>
+                    </>
+                  );
+                })()}
               </TabsContent>
 
               {/* ASSINANTE */}
@@ -234,7 +267,7 @@ export function FinanceiroAssinaturaDetalhe() {
                                   {fmtGuruDate(charged)}
                                 </td>
                                 <td className="px-4 py-3 text-center">
-                                  <Badge variant={statusVariant(status)}>{status}</Badge>
+                                  <Badge variant={invStatusVariant(status)}>{status}</Badge>
                                 </td>
                                 <td className="px-4 py-3 text-right tabular-nums font-semibold text-emerald-400">
                                   {formatCurrency(value)}
@@ -307,6 +340,16 @@ export function FinanceiroAssinaturaDetalhe() {
                 </Card>
               </TabsContent>
             </Tabs>
+
+            {/* JSON bruto pra debug - copia daqui pra eu mapear campos */}
+            <details className="rounded-lg bg-zinc-900/40 border border-zinc-800 p-3 mt-4">
+              <summary className="text-xs text-zinc-500 cursor-pointer">
+                JSON bruto da Guru (debug)
+              </summary>
+              <pre className="text-[10px] text-zinc-400 mt-2 overflow-x-auto max-h-96">
+                {JSON.stringify(sub, null, 2)}
+              </pre>
+            </details>
           </>
         )}
       </div>
