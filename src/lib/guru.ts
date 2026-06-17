@@ -175,13 +175,19 @@ export function fmtGuruDate(
     : d.toLocaleDateString('pt-BR');
 }
 
-// Helpers de período
+// Helpers de período — sempre em horário local (NÃO UTC).
+// toISOString() converte pra UTC e quebra o cálculo de "hoje" em fuso BR.
 export function isoDate(d: Date) {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 export function daysAgo(n: number) {
-  return isoDate(new Date(Date.now() - n * 24 * 60 * 60 * 1000));
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return isoDate(d);
 }
 
 export function today() {
@@ -191,4 +197,14 @@ export function today() {
 export function startOfMonth() {
   const d = new Date();
   return isoDate(new Date(d.getFullYear(), d.getMonth(), 1));
+}
+
+export function startOfPrevMonth() {
+  const d = new Date();
+  return isoDate(new Date(d.getFullYear(), d.getMonth() - 1, 1));
+}
+
+export function endOfPrevMonth() {
+  const d = new Date();
+  return isoDate(new Date(d.getFullYear(), d.getMonth(), 0));
 }
