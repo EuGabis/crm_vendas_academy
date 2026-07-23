@@ -1,0 +1,161 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Bebas+Neue&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 10% 4%;
+    --foreground: 0 0% 98%;
+
+    --card: 240 7% 9%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 7% 9%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 263 70% 60%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 5% 14%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 5% 14%;
+    --muted-foreground: 240 5% 60%;
+
+    --accent: 263 30% 22%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 5% 18%;
+    --input: 240 5% 18%;
+    --ring: 263 70% 60%;
+
+    --radius: 0.875rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html,
+  body,
+  #root {
+    @apply h-full;
+  }
+  body {
+    @apply bg-zinc-950 text-zinc-100 font-sans;
+    background-image:
+      radial-gradient(rgba(124, 58, 237, 0.08) 1px, transparent 1px),
+      radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 32px 32px, 16px 16px;
+    background-position: 0 0, 8px 8px;
+  }
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-zinc-800 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-zinc-700;
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  /* Padrão de container das páginas — responsivo */
+  .page {
+    @apply p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6;
+  }
+}
+
+@layer components {
+  .brand-wordmark {
+    font-family: 'Bebas Neue', 'Inter', sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.28em;
+    line-height: 1;
+    background: linear-gradient(135deg, #ffffff 0%, #c4b5fd 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+  }
+  .glass-card {
+    @apply bg-zinc-900/60 backdrop-blur-xl border border-zinc-800/80 rounded-2xl;
+  }
+  .glass-card-hover {
+    @apply hover:border-zinc-700/80 hover:bg-zinc-900/80 transition-colors;
+  }
+  .section-title {
+    @apply text-[11px] font-semibold tracking-[0.18em] uppercase text-zinc-500;
+  }
+  .nav-pill {
+    @apply relative flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium text-zinc-400 hover:text-white hover:bg-zinc-900/70 transition-all;
+  }
+  .nav-pill-active {
+    @apply text-white bg-gradient-to-r from-brand-600/30 to-brand-400/20 border border-brand-500/30 shadow-glow;
+  }
+  .kpi-value {
+    @apply text-3xl font-bold tracking-tight;
+  }
+}
+
+/* ============================================================================
+   Route transitions — slide horizontal estilo app nativo (mobile only)
+   ========================================================================== */
+@keyframes routeSlideInR {
+  from {
+    opacity: 0.4;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+@keyframes routeSlideInL {
+  from {
+    opacity: 0.4;
+    transform: translateX(-24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+.route-slide-in-r {
+  animation: routeSlideInR 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+.route-slide-in-l {
+  animation: routeSlideInL 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+/* Desktop: sem animacao — o slide fica esquisito em telas grandes */
+@media (min-width: 1024px) {
+  .route-slide-in-r,
+  .route-slide-in-l {
+    animation: none;
+  }
+}
+/* Respeita usuarios que preferem menos movimento */
+@media (prefers-reduced-motion: reduce) {
+  .route-slide-in-r,
+  .route-slide-in-l {
+    animation: none;
+  }
+}
